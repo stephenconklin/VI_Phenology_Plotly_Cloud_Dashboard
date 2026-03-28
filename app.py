@@ -32,7 +32,6 @@ _os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "false")
 _os.environ.setdefault("GRPC_POLL_STRATEGY", "epoll1")
 
 import math
-import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -48,6 +47,7 @@ import dash_leaflet as dl
 from config import (
     ALL_19_METRICS,
     BASEMAP_MAX_DIM,
+    BASEMAP_MAX_DIM_PRECOMPUTED,
     DEFAULT_VI_VAR,
     FAST_BASEMAP_METRICS,
     LAMBDA_DEFAULT,
@@ -75,7 +75,6 @@ from modules.datacube_io import (
     get_dataset,
     load_basemap_cache,
     load_metrics_for_basemap,
-    save_basemap_cache,
     utm_to_latlon,
 )
 from modules.phenology_metrics import (
@@ -187,30 +186,7 @@ def _compute_initial_map_view() -> tuple[list[float], int]:
 
 
 _INITIAL_CENTER, _INITIAL_ZOOM = _compute_initial_map_view()
-
-
-# ---------------------------------------------------------------------------
-# Background pre-warm (same as Shiny version)
-# ---------------------------------------------------------------------------
-
-def _prewarm_default_basemap() -> None:
-    if not ALL_REGIONS:
-        return
-    default_paths = next(iter(ALL_REGIONS.values()))
-    for metric in FAST_BASEMAP_METRICS.values():
-        cache = basemap_cache_path(default_paths.zarr_path or default_paths.nc_path, metric, BASEMAP_MAX_DIM)
-        if load_basemap_cache(cache) is not None:
-            continue
-        try:
-            ds     = get_dataset(default_paths)
-            result = compute_basemap_metric(ds, metric, vi_var=default_paths.vi_var)
-            save_basemap_cache(cache, *result)
-        except Exception:
-            pass
-
-
-if ALL_REGIONS:
-    threading.Thread(target=_prewarm_default_basemap, daemon=True).start()
+_FAST_METRIC_KEYS: frozenset[str] = frozenset(FAST_BASEMAP_METRICS.values())
 
 
 # ---------------------------------------------------------------------------
@@ -622,16 +598,22 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
             pass
 
     if z is None:
-        _fast_keys       = set(FAST_BASEMAP_METRICS.values())
-        effective_metric = metric if metric in _fast_keys else "peak_ndvi_mean"
-        cache            = basemap_cache_path(paths.zarr_path or paths.nc_path, effective_metric, BASEMAP_MAX_DIM)
-        hit              = load_basemap_cache(cache)
-        if hit is not None:
-            z, lon, lat = hit
-        else:
+        effective_metric = metric if metric in _FAST_METRIC_KEYS else "peak_ndvi_mean"
+        data_path        = paths.zarr_path or paths.nc_path
+        # Try pre-computed _d2000.npz first (generated offline, high-res),
+        # then fall back to the on-the-fly _d500.npz cache.
+        hit = load_basemap_cache(
+            basemap_cache_path(data_path, effective_metric, BASEMAP_MAX_DIM_PRECOMPUTED)
+        )
+        if hit is None:
+            hit = load_basemap_cache(
+                basemap_cache_path(data_path, effective_metric, BASEMAP_MAX_DIM)
+            )
+        if hit is None:
             ds          = get_dataset(paths)
             z, lon, lat = compute_basemap_metric(ds, effective_metric, vi_var=paths.vi_var)
-            save_basemap_cache(cache, z, lon, lat)
+        else:
+            z, lon, lat = hit
 
     # --- Colorscale limits ---
     zmin, zmax = _compute_colorscale_limits(z, colorscale_range or "3sd")
@@ -776,9 +758,8 @@ def compute_pixel_result(
     # a VI-range metric (the four quick metrics). Phenology metrics (Peak DOY,
     # Season Length, etc.) have colorscale ranges in completely different units
     # and must not be used to filter raw VI observations.
-    _fast_metric_keys = set(FAST_BASEMAP_METRICS.values())
-    _basemap_metric   = (basemap_info or {}).get("metric_key", "")
-    if _basemap_metric in _fast_metric_keys:
+    _basemap_metric = (basemap_info or {}).get("metric_key", "")
+    if _basemap_metric in _FAST_METRIC_KEYS:
         zmin = basemap_info.get("zmin") if basemap_info else None
         zmax = basemap_info.get("zmax") if basemap_info else None
     else:

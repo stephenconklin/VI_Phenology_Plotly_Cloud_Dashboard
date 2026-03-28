@@ -684,22 +684,14 @@ def load_basemap_cache(
     Load a cached (z, lon, lat) triple from disk or GCS.
     Returns None if the file does not exist or cannot be read.
     """
-    if _is_gcs(cache_path):
-        fs = _gcs_fs()
-        cache_rel = cache_path.removeprefix("gs://")
-        if not fs.exists(cache_rel):
-            return None
-        try:
+    try:
+        if _is_gcs(cache_path):
+            fs = _gcs_fs()
+            cache_rel = cache_path.removeprefix("gs://")
             with fs.open(cache_rel, "rb") as f:
                 data = np.load(f)
                 return data["z"], data["lon"], data["lat"]
-        except Exception:
-            return None
-    p = Path(cache_path)
-    if not p.exists():
-        return None
-    try:
-        data = np.load(str(p))
+        data = np.load(cache_path)
         return data["z"], data["lon"], data["lat"]
     except Exception:
         return None
@@ -774,14 +766,18 @@ def compute_basemap_metric(
     # Coarsen spatially first (still lazy), then reduce over time
     da_c = da.coarsen(y=cf_y, x=cf_x, boundary="trim").mean()
 
+    # scheduler="synchronous" avoids thread-pool/SIGALRM conflicts with gunicorn
+    # sync workers: the threaded scheduler spawns threads that can be killed
+    # mid-lock when gunicorn's timeout signal fires, causing the
+    # "SystemExit inside threading.Condition.wait" crash seen in production.
     if metric == "peak_ndvi_mean":
-        z = da_c.max(dim="time").compute().values
+        z = da_c.max(dim="time").compute(scheduler="synchronous").values
     elif metric == "mean_ndvi":
-        z = da_c.mean(dim="time").compute().values
+        z = da_c.mean(dim="time").compute(scheduler="synchronous").values
     elif metric == "std_ndvi":
-        z = da_c.std(dim="time").compute().values
+        z = da_c.std(dim="time").compute(scheduler="synchronous").values
     elif metric == "data_coverage":
-        z = da_c.notnull().mean(dim="time").compute().values
+        z = da_c.notnull().mean(dim="time").compute(scheduler="synchronous").values
     else:
         raise ValueError(f"Unknown on-the-fly basemap metric: {metric!r}")
 
