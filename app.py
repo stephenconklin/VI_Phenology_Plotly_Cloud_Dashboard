@@ -595,8 +595,7 @@ def update_year_slider(dataset_info: dict):
     Output("tile-layer", "maxZoom"),
     Output("colorbar-div", "children"),
     Output("basemap-info", "data"),
-    Output("main-map", "center"),
-    Output("main-map", "zoom"),
+    Output("main-map", "bounds"),
     Input("region-dropdown", "value"),
     Input("metric-select", "value"),
     Input("basemap-style", "value"),
@@ -664,11 +663,14 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         "vi_var":     paths.vi_var,
     }
 
-    # Only re-center the map when the region changes
+    # Only fit the map to the region when the region changes
     if ctx.triggered_id == "region-dropdown":
-        center, zoom = get_map_center_and_zoom(lon, lat)
+        map_bounds = [
+            [float(lat.min()), float(lon.min())],
+            [float(lat.max()), float(lon.max())],
+        ]
     else:
-        center, zoom = no_update, no_update
+        map_bounds = no_update
 
     return (
         overlay_url,
@@ -678,8 +680,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         tile_props["maxZoom"],
         colorbar,
         basemap_info,
-        center,
-        zoom,
+        map_bounds,
     )
 
 
