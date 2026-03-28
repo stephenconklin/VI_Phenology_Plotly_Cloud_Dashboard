@@ -192,7 +192,7 @@ def _prewarm_default_basemap() -> None:
         return
     default_paths = next(iter(ALL_REGIONS.values()))
     for metric in FAST_BASEMAP_METRICS.values():
-        cache = basemap_cache_path(default_paths.nc_path, metric, BASEMAP_MAX_DIM)
+        cache = basemap_cache_path(default_paths.zarr_path or default_paths.nc_path, metric, BASEMAP_MAX_DIM)
         if load_basemap_cache(cache) is not None:
             continue
         try:
@@ -622,7 +622,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
     if z is None:
         _fast_keys       = set(FAST_BASEMAP_METRICS.values())
         effective_metric = metric if metric in _fast_keys else "peak_ndvi_mean"
-        cache            = basemap_cache_path(paths.nc_path, effective_metric, BASEMAP_MAX_DIM)
+        cache            = basemap_cache_path(paths.zarr_path or paths.nc_path, effective_metric, BASEMAP_MAX_DIM)
         hit              = load_basemap_cache(cache)
         if hit is not None:
             z, lon, lat = hit

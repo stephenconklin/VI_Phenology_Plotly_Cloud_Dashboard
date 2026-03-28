@@ -110,7 +110,7 @@ def _gcs_storage_options() -> dict:
 class RegionPaths:
     """Paths (local or gs:// URIs) and VI variable name for one datacube region."""
     region_id: str
-    nc_path: str
+    nc_path: str | None        # None when only a Zarr store is available
     zarr_path: str | None      # None if not yet converted
     metrics_path: str | None   # None if pixel_metrics.nc not present
     vi_var: str = DEFAULT_VI_VAR
@@ -260,50 +260,77 @@ def _discover_regions_local(root: str) -> dict[str, RegionPaths]:
 
 
 def _discover_regions_gcs(root: str) -> dict[str, RegionPaths]:
-    """GCS implementation of region discovery using gcsfs."""
+    """
+    GCS implementation of region discovery using gcsfs.
+
+    Discovers regions from Zarr stores (*.zarr/.zmetadata) and/or NetCDF
+    datacubes (*.nc, excluding pixel_metrics files).  Either is sufficient
+    — Zarr is preferred for performance, NC is the fallback.
+    """
     fs = _gcs_fs()
-    # gcsfs operates on paths without the gs:// scheme prefix; strip trailing slash
     root_no_scheme = root.removeprefix("gs://").rstrip("/")
 
+    # --- Collect Zarr stores via their .zmetadata marker ---
+    zarr_markers: list[str] = fs.glob(f"{root_no_scheme}/**/.zmetadata")
+    zarr_rels: list[str] = [m[: -len("/.zmetadata")] for m in zarr_markers
+                             if m.endswith("/.zmetadata")
+                             and m[: -len("/.zmetadata")].endswith(".zarr")]
+
+    # --- Collect NetCDF datacubes (optional, used when no Zarr present) ---
     all_nc: list[str] = [
         p for p in fs.glob(f"{root_no_scheme}/**/*.nc")
         if "pixel_metrics" not in Path(p).stem
     ]
 
-    if not all_nc:
+    if not zarr_rels and not all_nc:
         raise FileNotFoundError(
-            f"No *.nc datacube files found under: {root}\n"
+            f"No Zarr stores or *.nc datacube files found under: {root}\n"
             f"Set VI_DATACUBE_ROOT env var or edit config.py."
         )
 
-    nc_files = sorted(all_nc, key=lambda p: _natural_sort_key(Path(p).name))
+    # Build a lookup: stem → nc_rel_path (for pairing with zarr stores)
+    nc_by_stem: dict[str, str] = {Path(p).stem: p for p in all_nc}
 
-    # First pass: parse candidate region IDs and VI variable names
-    candidates: list[tuple[str, str, str]] = []  # (region_id, vi_var, nc_rel_path)
-    for nc_rel in nc_files:
-        region_id, vi_var = _parse_nc_stem(Path(nc_rel).stem)
-        candidates.append((region_id, vi_var, nc_rel))
+    # Build candidate list from zarr stores first, then any unpaired nc files
+    # Each candidate: (region_id, vi_var, zarr_rel_or_None, nc_rel_or_None)
+    Candidate = tuple[str, str, str | None, str | None]
+    candidates: list[Candidate] = []
+    seen_stems: set[str] = set()
+
+    for zarr_rel in sorted(zarr_rels, key=lambda p: _natural_sort_key(Path(p).name)):
+        stem = Path(zarr_rel).stem  # e.g. "NDVI_G5_1_datacube"
+        region_id, vi_var = _parse_nc_stem(stem)
+        nc_rel = nc_by_stem.get(stem)
+        candidates.append((region_id, vi_var, zarr_rel, nc_rel))
+        seen_stems.add(stem)
+
+    for nc_rel in sorted(all_nc, key=lambda p: _natural_sort_key(Path(p).name)):
+        stem = Path(nc_rel).stem
+        if stem in seen_stems:
+            continue  # already covered by the zarr entry above
+        region_id, vi_var = _parse_nc_stem(stem)
+        candidates.append((region_id, vi_var, None, nc_rel))
+        seen_stems.add(stem)
 
     # Detect collisions and qualify with parent directory name
-    seen: dict[str, int] = {}
-    for rid, _, _ in candidates:
-        seen[rid] = seen.get(rid, 0) + 1
+    seen_ids: dict[str, int] = {}
+    for rid, _, _, _ in candidates:
+        seen_ids[rid] = seen_ids.get(rid, 0) + 1
 
     regions: dict[str, RegionPaths] = {}
-    for region_id, vi_var, nc_rel in candidates:
-        parent_name = Path(nc_rel).parent.name
-        if seen[region_id] > 1:
-            region_id = f"{parent_name}/{region_id}"
+    for region_id, vi_var, zarr_rel, nc_rel in candidates:
+        src_rel   = zarr_rel or nc_rel
+        parent_rel = str(Path(src_rel).parent)
 
-        nc_uri      = f"gs://{nc_rel}"
-        stem        = Path(nc_rel).stem
-        parent_rel  = str(Path(nc_rel).parent)
+        if seen_ids[region_id] > 1:
+            region_id = f"{Path(src_rel).parent.name}/{region_id}"
 
-        zarr_rel = f"{parent_rel}/{stem}.zarr"
-        zarr_uri = f"gs://{zarr_rel}"
+        nc_uri   = f"gs://{nc_rel}"   if nc_rel   else None
+        zarr_uri = f"gs://{zarr_rel}" if zarr_rel  else None
 
+        # Metrics: look for <VI>_<region>_pixel_metrics.nc next to the data
         metrics_canonical_rel = f"{parent_rel}/{vi_var}_{region_id}_pixel_metrics.nc"
-        metrics_fallback_rel  = f"{parent_rel}/{stem}_pixel_metrics.nc"
+        metrics_fallback_rel  = f"{parent_rel}/{Path(src_rel).stem}_pixel_metrics.nc"
         if fs.exists(metrics_canonical_rel):
             metrics_uri: str | None = f"gs://{metrics_canonical_rel}"
         elif fs.exists(metrics_fallback_rel):
@@ -314,7 +341,7 @@ def _discover_regions_gcs(root: str) -> dict[str, RegionPaths]:
         regions[region_id] = RegionPaths(
             region_id=region_id,
             nc_path=nc_uri,
-            zarr_path=zarr_uri if fs.exists(zarr_rel) else None,
+            zarr_path=zarr_uri,
             metrics_path=metrics_uri,
             vi_var=vi_var,
         )
@@ -380,7 +407,11 @@ def get_dataset(paths: RegionPaths) -> xr.Dataset:
     """
     if paths.zarr_path is not None:
         return _open_zarr_cached(paths.zarr_path)
-    return _open_datacube_cached(paths.nc_path)
+    if paths.nc_path is not None:
+        return _open_datacube_cached(paths.nc_path)
+    raise FileNotFoundError(
+        f"Region '{paths.region_id}' has neither a Zarr store nor a NetCDF file."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -611,21 +642,21 @@ def _regrid_to_wgs84(
 # Basemap disk cache helpers
 # ---------------------------------------------------------------------------
 
-def basemap_cache_path(nc_path: str, metric: str, max_dim: int) -> str:
+def basemap_cache_path(data_path: str, metric: str, max_dim: int) -> str:
     """
-    Return the path (local) or URI (GCS) of the on-disk basemap cache file
-    for a given (nc_path, metric, max_dim) combination.
+    Return the path (local) or URI (GCS) of the on-disk basemap cache file.
+    Accepts either an nc_path or a zarr_path (stem is used for naming either way).
 
-    Naming: <nc_stem>_basemap_<metric>_d<max_dim>.npz
+    Naming: <stem>_basemap_<metric>_d<max_dim>.npz
     e.g.    NDVI_G5_14_datacube_basemap_mean_ndvi_d500.npz
-
-    The file lives next to the .nc file so it is easy to find and delete.
     """
-    if _is_gcs(nc_path):
-        stem   = nc_path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-        parent = nc_path.rsplit("/", 1)[0]
+    if _is_gcs(data_path):
+        # Strip trailing slash, then take everything after the last /
+        name   = data_path.rstrip("/").rsplit("/", 1)[-1]
+        stem   = name.rsplit(".", 1)[0]  # removes .nc or .zarr
+        parent = data_path.rstrip("/").rsplit("/", 1)[0]
         return f"{parent}/{stem}_basemap_{metric}_d{max_dim}.npz"
-    p = Path(nc_path)
+    p = Path(data_path.rstrip("/"))
     return str(p.parent / f"{p.stem}_basemap_{metric}_d{max_dim}.npz")
 
 
