@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets / credentials — never commit these
+*.json
+!shapefiles/*.json
+*.pem
+*.key
+.env
+.env.*
+
+# Data files
+*.nc
+*.zarr/
+*.zarr
+*.npz
+*.h5
+*.hdf5
+*.tif
+*.tiff
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+gunicorn*.log
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/

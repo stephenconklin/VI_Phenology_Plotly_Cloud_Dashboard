@@ -1,0 +1,34 @@
+# VI Phenology Dashboard — Dash version
+# Install with: pip install -r requirements.txt
+# (Conda users: install numpy/pandas/xarray/scipy/etc. via conda, then pip install the rest)
+
+# Web framework
+dash>=2.17
+dash-leaflet>=1.0
+dash-bootstrap-components>=1.5
+
+# WSGI server (Dash Enterprise / gunicorn deployment)
+gunicorn>=21.0
+
+# Scientific / data
+numpy
+pandas
+xarray
+netcdf4
+dask
+scipy
+pyproj
+zarr
+geopandas
+
+# Visualisation
+plotly>=5.17
+matplotlib
+pillow
+
+# Cloud storage
+gcsfs
+h5netcdf
+
+# Utilities
+tqdm
