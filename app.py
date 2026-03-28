@@ -772,8 +772,17 @@ def compute_pixel_result(
         return None
 
     # --- Apply filters (narrowed_timeseries logic from Shiny version) ---
-    zmin = basemap_info.get("zmin") if basemap_info else None
-    zmax = basemap_info.get("zmax") if basemap_info else None
+    # Only apply colorscale limits as VI filters when the basemap is showing
+    # a VI-range metric (the four quick metrics). Phenology metrics (Peak DOY,
+    # Season Length, etc.) have colorscale ranges in completely different units
+    # and must not be used to filter raw VI observations.
+    _fast_metric_keys = set(FAST_BASEMAP_METRICS.values())
+    _basemap_metric   = (basemap_info or {}).get("metric_key", "")
+    if _basemap_metric in _fast_metric_keys:
+        zmin = basemap_info.get("zmin") if basemap_info else None
+        zmax = basemap_info.get("zmax") if basemap_info else None
+    else:
+        zmin = zmax = None
     mask = ts.valid_mask.copy()
     if zmin is not None:
         mask &= ts.raw_vi >= float(zmin)
