@@ -593,8 +593,7 @@ def update_year_slider(dataset_info: dict):
     Output("tile-layer", "maxZoom"),
     Output("colorbar-div", "children"),
     Output("basemap-info", "data"),
-    Output("main-map", "center"),
-    Output("main-map", "zoom"),
+    Output("main-map", "bounds"),
     Input("region-dropdown", "value"),
     Input("metric-select", "value"),
     Input("basemap-style", "value"),
@@ -662,11 +661,14 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         "vi_var":     paths.vi_var,
     }
 
-    # Only re-center the map when the region changes
+    # Only re-fit the map when the region changes
     if ctx.triggered_id == "region-dropdown":
-        center, zoom = get_map_center_and_zoom(lon, lat)
+        map_bounds = [
+            [float(lat.min()), float(lon.min())],
+            [float(lat.max()), float(lon.max())],
+        ]
     else:
-        center, zoom = no_update, no_update
+        map_bounds = no_update
 
     return (
         overlay_url,
@@ -676,8 +678,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         tile_props["maxZoom"],
         colorbar,
         basemap_info,
-        center,
-        zoom,
+        map_bounds,
     )
 
 
@@ -1032,12 +1033,7 @@ if _SHAPEFILE_LIST:
     def on_shapefile_click(*args):
         n               = len(_SHAPEFILE_LIST)
         click_data_list = args[:n]
-        locked_region   = args[n]
         current_region  = args[n + 1]
-
-        # Locked: user already selected this region via shapefile — ignore further clicks
-        if locked_region is not None and locked_region == current_region:
-            raise PreventUpdate
 
         # Identify the clicked feature
         feature = next((cd for cd in click_data_list if cd is not None), None)
@@ -1045,29 +1041,16 @@ if _SHAPEFILE_LIST:
             raise PreventUpdate
 
         box_nr = (feature.get("properties") or {}).get("box_nr")
-        if box_nr is None:
+        if box_nr is None or box_nr == current_region:
             raise PreventUpdate
 
         if box_nr in ALL_REGIONS:
-            return box_nr, box_nr, False, ""
+            return box_nr, no_update, False, ""
 
         return (
             no_update, no_update, True,
             f"No datacube found for flight box {box_nr}.",
         )
-
-
-    @callback(
-        Output("shapefile-region-locked", "data", allow_duplicate=True),
-        Input("region-dropdown", "value"),
-        State("shapefile-region-locked", "data"),
-        prevent_initial_call=True,
-    )
-    def clear_lock_on_dropdown_change(region, locked_region):
-        # If the user manually picks a different region, release the shapefile lock
-        if locked_region is not None and region != locked_region:
-            return None
-        raise PreventUpdate
 
 
 # Shapefile visibility toggle — only registered if layers exist
