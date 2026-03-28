@@ -569,10 +569,10 @@ def build_date_cache_from_dates(obs_dates: np.ndarray) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# WGS84 regridding helper
+# Web Mercator regridding helper
 # ---------------------------------------------------------------------------
 
-def _regrid_to_wgs84(
+def _regrid_to_mercator(
     z: np.ndarray,
     lon_2d: np.ndarray,
     lat_2d: np.ndarray,
@@ -581,31 +581,30 @@ def _regrid_to_wgs84(
     src_epsg: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Re-project z values from a regular UTM grid onto a regular WGS84 grid.
+    Re-project z values from a regular UTM grid onto a regular Web Mercator
+    (EPSG:3857) grid, returning WGS84 lon/lat equivalents of each cell centre.
 
-    Problem
-    -------
-    go.Heatmap uses only lon[0,:] and lat[:,0] as axis vectors, implicitly
-    assuming a purely rectangular WGS84 grid.  UTM Zone 34S grids are rotated
-    slightly relative to geographic north, so each row has a different longitude
-    offset and each column a different latitude offset.  Passing the raw UTM
-    meshgrid lon/lat to Plotly causes visible misalignment against any WGS84
-    basemap.
+    Why Mercator instead of WGS84
+    ------------------------------
+    Leaflet renders dl.ImageOverlay by converting the WGS84 corner bounds to
+    EPSG:3857 and stretching the PNG linearly in Mercator space.  Generating
+    the PNG on a regular Mercator grid makes that stretch geometrically exact
+    in both axes.  A plain WGS84 grid cannot account for the ~0.5–1° rotation
+    of UTM Zone 34S relative to geographic north, which causes 50–200 m pixel
+    drift at flight-box edges.
 
-    Solution
-    --------
-    1. Set up a RegularGridInterpolator on the original UTM grid.
-    2. Define a regular WGS84 target grid with the same pixel count.
-    3. Convert each target (lon, lat) back to UTM and look up its z-value.
-
-    The returned arrays are truly regular: lon_grid[i,j] == lon_grid[0,j]
-    and lat_grid[i,j] == lat_grid[i,0] for all i, j.
+    Return value
+    ------------
+    z_reg     : reprojected metric values on the Mercator grid
+    lon_grid  : WGS84 longitude of each grid cell (for bounds calculation)
+    lat_grid  : WGS84 latitude  of each grid cell (for bounds calculation)
     """
     from scipy.interpolate import RegularGridInterpolator
 
     ny, nx = z.shape
 
-    # RegularGridInterpolator requires strictly increasing axis arrays.
+    # --- build interpolator on the UTM source grid ---
+    # RegularGridInterpolator requires strictly increasing axis arrays;
     # y_c (UTM northing) is often decreasing in raster convention.
     y_order = np.argsort(y_c)
     x_order = np.argsort(x_c)
@@ -619,28 +618,38 @@ def _regrid_to_wgs84(
         fill_value=np.nan,
     )
 
-    # Regular WGS84 target grid — lon increases west→east (linear in Mercator-x).
-    lon_reg = np.linspace(float(lon_2d.min()), float(lon_2d.max()), nx)
-
-    # Rows evenly spaced in Mercator-y so that Leaflet's linear ImageOverlay
-    # stretch is geometrically exact (eliminates ~50 m mid-region drift).
-    R         = 6_378_137.0  # WGS84 semi-major axis
-    lat_min_r = np.radians(float(lat_2d.min()))
-    lat_max_r = np.radians(float(lat_2d.max()))
-    merc_y    = np.linspace(
-        R * np.log(np.tan(np.pi / 4 + lat_min_r / 2)),
-        R * np.log(np.tan(np.pi / 4 + lat_max_r / 2)),
-        ny,
+    # --- WGS84 data extent → Web Mercator extent ---
+    tf_wgs_to_merc = _get_transformer(TARGET_CRS_EPSG, 3857)
+    lon_min, lon_max = float(lon_2d.min()), float(lon_2d.max())
+    lat_min, lat_max = float(lat_2d.min()), float(lat_2d.max())
+    # Use all four corners to capture any skew in the UTM→WGS84 conversion.
+    cx, cy = tf_wgs_to_merc.transform(
+        [lon_min, lon_max, lon_min, lon_max],
+        [lat_min, lat_min, lat_max, lat_max],
     )
-    lat_reg = 2.0 * np.degrees(np.arctan(np.exp(merc_y / R))) - 90.0
-    lon_grid, lat_grid = np.meshgrid(lon_reg, lat_reg)
+    merc_x_min, merc_x_max = float(np.min(cx)), float(np.max(cx))
+    merc_y_min, merc_y_max = float(np.min(cy)), float(np.max(cy))
 
-    # Convert target WGS84 positions → UTM for the interpolator lookup.
-    tf_inv = _get_transformer(TARGET_CRS_EPSG, src_epsg)
-    x_tgt, y_tgt = tf_inv.transform(lon_grid.ravel(), lat_grid.ravel())
+    # --- regular Web Mercator target grid ---
+    merc_x = np.linspace(merc_x_min, merc_x_max, nx)
+    merc_y = np.linspace(merc_y_min, merc_y_max, ny)
+    merc_x_grid, merc_y_grid = np.meshgrid(merc_x, merc_y)
 
+    # --- Mercator → WGS84 (for the return value / ImageOverlay bounds) ---
+    tf_merc_to_wgs = _get_transformer(3857, TARGET_CRS_EPSG)
+    lon_flat, lat_flat = tf_merc_to_wgs.transform(
+        merc_x_grid.ravel(), merc_y_grid.ravel()
+    )
+    lon_grid = lon_flat.reshape(ny, nx)
+    lat_grid = lat_flat.reshape(ny, nx)
+
+    # --- Mercator → UTM (for interpolator lookup) ---
+    tf_merc_to_utm = _get_transformer(3857, src_epsg)
+    x_tgt, y_tgt = tf_merc_to_utm.transform(
+        merc_x_grid.ravel(), merc_y_grid.ravel()
+    )
     z_reg = interp(
-        np.column_stack([y_tgt, x_tgt])   # interpolator axis order: (northing, easting)
+        np.column_stack([y_tgt, x_tgt])  # interpolator axis order: (northing, easting)
     ).reshape(ny, nx)
 
     return z_reg, lon_grid, lat_grid
@@ -787,7 +796,7 @@ def compute_basemap_metric(
     lon_2d = lon_2d.reshape(yy.shape)
     lat_2d = lat_2d.reshape(yy.shape)
 
-    return _regrid_to_wgs84(z, lon_2d, lat_2d, x_c, y_c, src_epsg)
+    return _regrid_to_mercator(z, lon_2d, lat_2d, x_c, y_c, src_epsg)
 
 
 def load_metrics_for_basemap(
@@ -828,7 +837,7 @@ def load_metrics_for_basemap(
     lon_2d, lat_2d = utm_to_latlon(xx.ravel(), yy.ravel(), src_epsg)
     lon_2d = lon_2d.reshape(yy.shape)
     lat_2d = lat_2d.reshape(yy.shape)
-    return _regrid_to_wgs84(z, lon_2d, lat_2d, x_c, y_c, src_epsg)
+    return _regrid_to_mercator(z, lon_2d, lat_2d, x_c, y_c, src_epsg)
 
 
 # ---------------------------------------------------------------------------

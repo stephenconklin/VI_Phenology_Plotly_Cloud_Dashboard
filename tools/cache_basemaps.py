@@ -4,31 +4,38 @@ cache_basemaps.py — Offline utility: pre-compute and cache basemap arrays.
 Why?
 ----
 When the dashboard first displays a region its basemap is computed on the fly
-via a full Dask temporal reduction over the NetCDF file.  For large regions
-(G5_14: 2.6 GB, ~23 GB uncompressed) this can take 5–30 seconds and freezes
-the browser until it finishes.
+via a full Dask temporal reduction over the Zarr store.  For large regions
+(G5_14: ~23 GB uncompressed) this can take 5–30 seconds and freezes the
+browser until it finishes.
 
-Running this script once writes a small .npz cache file next to each datacube:
+Running this script once writes a small .npz cache file next to each datacube
+(local or GCS):
 
     NDVI_G5_14_datacube_basemap_mean_ndvi_d500.npz   (~300 KB)
 
 The dashboard detects these files and loads them in milliseconds instead of
-running the Dask compute.  The progress bar in the browser will still appear
-for any region that has no cache file yet.
+running the Dask compute.
 
 Cache file naming
 -----------------
-    <nc_stem>_basemap_<metric>_d<max_dim>.npz
+    <zarr_stem>_basemap_<metric>_d<max_dim>.npz
 
-    nc_stem  : filename of the datacube without extension
-                 e.g. NDVI_G5_14_datacube
-    metric   : internal metric key (mean_ndvi, peak_ndvi_mean, std_ndvi,
-                 data_coverage)
-    max_dim  : maximum display pixels per axis (matches config.BASEMAP_MAX_DIM,
-                 default 500)
+    zarr_stem : name of the zarr store without extension
+                  e.g. NDVI_G5_14_datacube
+    metric    : internal metric key (mean_ndvi, peak_ndvi_mean, std_ndvi,
+                  data_coverage)
+    max_dim   : maximum display pixels per axis (matches config.BASEMAP_MAX_DIM,
+                  default 500)
 
-Files live next to the .nc datacube and are discovered automatically by the
-dashboard.  Delete them to force a fresh recompute.
+For GCS targets the .npz is written to the same bucket path as the zarr store.
+
+GCS authentication
+------------------
+Set the GOOGLE_SERVICE_ACCOUNT_JSON environment variable to the path of your
+service account key file (same variable the dashboard uses):
+
+    export GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/key.json
+    python tools/cache_basemaps.py --all
 
 Usage
 -----
@@ -40,7 +47,10 @@ Usage
     # Cache one specific region:
     python tools/cache_basemaps.py --region G5_14
 
-    # Cache only specific metrics (default: all 4 fast metrics):
+    # Force-recompute even if cache already exists:
+    python tools/cache_basemaps.py --all --force
+
+    # Cache only specific metrics:
     python tools/cache_basemaps.py --all --metrics mean_ndvi peak_ndvi_mean
 
     # Override the max display resolution (default: config.BASEMAP_MAX_DIM = 500):
@@ -50,7 +60,7 @@ Usage
     python tools/cache_basemaps.py --all --dry-run
 
     # Override data root:
-    VI_DATACUBE_ROOT=/path/to/data python tools/cache_basemaps.py --all
+    VI_DATACUBE_ROOT=gs://my-bucket/data python tools/cache_basemaps.py --all
 
 Expected metrics
 ----------------
@@ -84,6 +94,16 @@ from modules.datacube_io import (
 _ALL_FAST_METRICS: list[str] = list(FAST_BASEMAP_METRICS.values())
 
 
+def _is_gcs(path: str) -> bool:
+    return path.startswith("gs://")
+
+
+def _path_label(path: str) -> str:
+    """Short display name for a data path (last two components)."""
+    parts = path.rstrip("/").split("/")
+    return "/".join(parts[-2:]) if len(parts) >= 2 else path
+
+
 # ---------------------------------------------------------------------------
 # Per-region caching
 # ---------------------------------------------------------------------------
@@ -106,25 +126,28 @@ def cache_region(
     force   : if True, recompute even if a cache file already exists
     dry_run : if True, print what would happen but don't write
     """
-    nc_mb = paths.nc_path.stat().st_size / (1024 ** 2)
-    print(f"\n[{paths.region_id}]  NC: {nc_mb:.0f} MB  "
-          f"({'zarr' if paths.zarr_path else 'nc only'})")
+    data_path = paths.zarr_path or paths.nc_path
+    if data_path is None:
+        print(f"\n[{paths.region_id}]  SKIP — no zarr or nc path")
+        return
+
+    print(f"\n[{paths.region_id}]  {_path_label(data_path)}")
 
     ds = None  # opened lazily on first cache miss
 
     for metric in metrics:
-        cache = basemap_cache_path(paths.nc_path, metric, max_dim)
+        cache = basemap_cache_path(data_path, metric, max_dim)
 
-        if cache.exists() and not force:
+        if not force:
             hit = load_basemap_cache(cache)
             if hit is not None:
                 z, _, _ = hit
-                print(f"  {metric:20s}  [cached]  shape={z.shape}  {cache.name}")
+                print(f"  {metric:20s}  [cached]  shape={z.shape}")
                 continue
-            # File exists but unreadable — fall through to recompute
 
+        cache_name = cache.rsplit("/", 1)[-1] if "/" in cache else cache
         if dry_run:
-            print(f"  {metric:20s}  [would compute]  → {cache.name}")
+            print(f"  {metric:20s}  [would compute]  → {cache_name}")
             continue
 
         print(f"  {metric:20s}  computing … ", end="", flush=True)
@@ -143,9 +166,7 @@ def cache_region(
 
         elapsed = time.perf_counter() - t0
         save_basemap_cache(cache, z, lon, lat)
-        cache_kb = cache.stat().st_size / 1024
-        print(f"done  ({elapsed:.1f}s)  shape={z.shape}  "
-              f"cache={cache_kb:.0f} KB  → {cache.name}")
+        print(f"done  ({elapsed:.1f}s)  shape={z.shape}  → {cache_name}")
 
 
 # ---------------------------------------------------------------------------
@@ -201,8 +222,12 @@ def main() -> None:
 
     try:
         regions = discover_regions()
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    except Exception as e:
+        print(f"Error discovering regions: {e}")
+        sys.exit(1)
+
+    if not regions:
+        print("No regions found. Check VI_DATACUBE_ROOT and GCS credentials.")
         sys.exit(1)
 
     if args.all:
@@ -219,8 +244,10 @@ def main() -> None:
 
     print(f"Metrics : {args.metrics}")
     print(f"Max dim : {args.max_dim}")
+    if args.force:
+        print("Force   : yes — existing cache files will be overwritten")
     if args.dry_run:
-        print("Dry run — no files will be written.\n")
+        print("Dry run : no files will be written.\n")
 
     t_total = time.perf_counter()
     for paths in target_regions:
