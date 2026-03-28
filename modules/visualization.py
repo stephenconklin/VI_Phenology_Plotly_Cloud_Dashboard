@@ -112,7 +112,7 @@ def _auto_zoom(lat_range: float, lon_range: float) -> int:
     extent = max(lat_range, lon_range)
     if extent <= 0:
         return 10
-    return max(6, min(14, int(math.log2(360.0 / extent)) - 1))
+    return max(6, min(14, int(math.log2(360.0 / extent)) + 1))
 
 
 def get_tile_layer_props(tile_service: str) -> dict:
