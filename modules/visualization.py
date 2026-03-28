@@ -623,7 +623,7 @@ def make_metrics_annual_figure(
         rows=n_rows,
         cols=n_cols,
         subplot_titles=subplot_titles,
-        vertical_spacing=0.10,
+        vertical_spacing=max(0.06, 0.55 / max(n_rows, 1)),
         horizontal_spacing=0.14,
     )
 
@@ -694,13 +694,14 @@ def make_metrics_annual_figure(
 
     fig = go.Figure(fig_base)
     fig.update_layout(
-        title=dict(text=f"{region_id} — Annual Metric Trends", font=dict(size=13)),
-        height=n_rows * 260 + 80,
-        legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0,
+        title=dict(text=f"{region_id} — Annual Metric Trends", font=dict(size=13),
+                   y=0.99, yanchor="top"),
+        height=n_rows * 260 + 120,
+        legend=dict(orientation="h", yanchor="top", y=0.97, x=0,
                     font=dict(size=10), traceorder="normal"),
         plot_bgcolor="#f8f8f8",
         paper_bgcolor="white",
-        margin=dict(l=65, r=25, t=60, b=50),
+        margin=dict(l=65, r=25, t=110, b=50),
         uirevision="metrics_annual",
     )
     # Reduce subplot title font so it fits within the inter-row gap
