@@ -270,11 +270,19 @@ def _discover_regions_gcs(root: str) -> dict[str, RegionPaths]:
     fs = _gcs_fs()
     root_no_scheme = root.removeprefix("gs://").rstrip("/")
 
-    # --- Collect Zarr stores via their .zmetadata marker ---
-    zarr_markers: list[str] = fs.glob(f"{root_no_scheme}/**/.zmetadata")
-    zarr_rels: list[str] = [m[: -len("/.zmetadata")] for m in zarr_markers
-                             if m.endswith("/.zmetadata")
-                             and m[: -len("/.zmetadata")].endswith(".zarr")]
+    # --- Collect Zarr stores ---
+    # Try .zmetadata first (consolidated, zarr v2 default).
+    # Fall back to .zgroup which is present in every zarr v2 store regardless
+    # of whether consolidation was used.
+    zarr_rels: list[str] = []
+    for marker in (".zmetadata", ".zgroup"):
+        raw: list[str] = fs.glob(f"{root_no_scheme}/**/{marker}")
+        found = [m[: -len(f"/{marker}")] for m in raw
+                 if m.endswith(f"/{marker}")
+                 and m[: -len(f"/{marker}")].endswith(".zarr")]
+        zarr_rels = list(dict.fromkeys(zarr_rels + found))  # dedup, preserve order
+        if zarr_rels:
+            break
 
     # --- Collect NetCDF datacubes (optional, used when no Zarr present) ---
     all_nc: list[str] = [
