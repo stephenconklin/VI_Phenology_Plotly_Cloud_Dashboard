@@ -29,6 +29,7 @@ pillow
 # Cloud storage
 gcsfs
 h5netcdf
+h5py
 
 # Utilities
 tqdm
