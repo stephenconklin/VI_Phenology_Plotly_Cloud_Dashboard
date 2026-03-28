@@ -397,7 +397,6 @@ _main_panel = dbc.Col(
             id="main-map",
             center=_INITIAL_CENTER,
             zoom=_INITIAL_ZOOM,
-            boundsOptions={"padding": [20, 20]},
             style=_MAP_STYLE,
             children=_initial_map_children(),
         ),
@@ -599,7 +598,7 @@ def update_year_slider(dataset_info: dict):
     Output("tile-layer", "maxZoom"),
     Output("colorbar-div", "children"),
     Output("basemap-info", "data"),
-    Output("main-map", "bounds"),
+    Output("main-map", "viewport"),
     Input("region-dropdown", "value"),
     Input("metric-select", "value"),
     Input("basemap-style", "value"),
@@ -669,12 +668,15 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
 
     # Only fit the map to the region when the region changes
     if ctx.triggered_id == "region-dropdown":
-        map_bounds = [
-            [float(lat.min()), float(lon.min())],
-            [float(lat.max()), float(lon.max())],
-        ]
+        viewport = dict(
+            bounds=[
+                [float(lat.min()), float(lon.min())],
+                [float(lat.max()), float(lon.max())],
+            ],
+            transition="flyToBounds",
+        )
     else:
-        map_bounds = no_update
+        viewport = no_update
 
     return (
         overlay_url,
@@ -684,7 +686,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         tile_props["maxZoom"],
         colorbar,
         basemap_info,
-        map_bounds,
+        viewport,
     )
 
 
