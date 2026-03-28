@@ -18,7 +18,7 @@ netcdf4
 dask
 scipy
 pyproj
-zarr
+zarr>=3.0
 geopandas
 
 # Visualisation

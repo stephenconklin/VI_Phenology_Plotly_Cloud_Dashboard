@@ -271,11 +271,11 @@ def _discover_regions_gcs(root: str) -> dict[str, RegionPaths]:
     root_no_scheme = root.removeprefix("gs://").rstrip("/")
 
     # --- Collect Zarr stores ---
-    # Try .zmetadata first (consolidated, zarr v2 default).
-    # Fall back to .zgroup which is present in every zarr v2 store regardless
-    # of whether consolidation was used.
+    # Zarr v3 stores have zarr.json at the root.
+    # Zarr v2 stores have .zmetadata (consolidated) or .zgroup (always present).
+    # Try all three markers; stop as soon as any are found.
     zarr_rels: list[str] = []
-    for marker in (".zmetadata", ".zgroup"):
+    for marker in ("zarr.json", ".zmetadata", ".zgroup"):
         raw: list[str] = fs.glob(f"{root_no_scheme}/**/{marker}")
         found = [m[: -len(f"/{marker}")] for m in raw
                  if m.endswith(f"/{marker}")
