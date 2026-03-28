@@ -25,6 +25,12 @@ Architecture notes
 
 from __future__ import annotations
 
+# Suppress grpcio BlockingIOError spam that occurs when gunicorn sync workers
+# are used alongside gcsfs/google-cloud-storage (which pulls in gRPC).
+import os as _os
+_os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "false")
+_os.environ.setdefault("GRPC_POLL_STRATEGY", "epoll1")
+
 import math
 import threading
 from pathlib import Path
@@ -387,15 +393,13 @@ _sidebar = dbc.Col(_sidebar_content, width=3, style=_SIDEBAR_STYLE)
 
 _main_panel = dbc.Col(
     [
-        dcc.Loading(
-            dl.Map(
-                id="main-map",
-                center=_INITIAL_CENTER,
-                zoom=_INITIAL_ZOOM,
-                style=_MAP_STYLE,
-                children=_initial_map_children(),
-            ),
-            type="circle",
+        dl.Map(
+            id="main-map",
+            center=_INITIAL_CENTER,
+            zoom=_INITIAL_ZOOM,
+            boundsOptions={"padding": [20, 20]},
+            style=_MAP_STYLE,
+            children=_initial_map_children(),
         ),
         dbc.Tabs(
             [
