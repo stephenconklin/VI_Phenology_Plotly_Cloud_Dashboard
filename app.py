@@ -320,6 +320,12 @@ _sidebar_content = [
         marks={}, allowCross=False,
         tooltip={"placement": "bottom", "always_visible": False},
     ),
+    dcc.Checklist(
+        id="single-year-toggle",
+        options=[{"label": " Single year", "value": "single"}],
+        value=[],
+        style={"marginBottom": "4px", "fontSize": "0.85rem"},
+    ),
 
     html.Div(id="colorbar-div", style={"marginTop": "8px", "marginBottom": "4px"}),
 
@@ -561,6 +567,18 @@ def update_year_slider(dataset_info: dict):
     return yr_min, yr_max, [yr_min, yr_max]
 
 
+@callback(
+    Output("year-range", "value", allow_duplicate=True),
+    Input("single-year-toggle", "value"),
+    State("year-range", "value"),
+    prevent_initial_call=True,
+)
+def snap_single_year(toggle, year_range):
+    if toggle and year_range:
+        return [year_range[0], year_range[0]]
+    raise PreventUpdate
+
+
 # ---------------------------------------------------------------------------
 # Callbacks: basemap / map state
 # ---------------------------------------------------------------------------
@@ -725,13 +743,14 @@ def update_selected_pixel(clickData, region, basemap_info):
     Output("pixel-result", "data"),
     Input("selected-pixel", "data"),
     Input("year-range", "value"),
+    Input("single-year-toggle", "value"),
     Input("colorscale-range", "value"),
     Input("lambda-slider", "value"),
     State("basemap-info", "data"),
     State("region-dropdown", "value"),
 )
 def compute_pixel_result(
-    selected_pixel, year_range, colorscale_range,
+    selected_pixel, year_range, single_year_toggle, colorscale_range,
     lambda_val, basemap_info, region,
 ):
     if selected_pixel is None or selected_pixel.get("region") != region:
@@ -769,8 +788,9 @@ def compute_pixel_result(
     if zmax is not None:
         mask &= ts.raw_vi <= float(zmax)
 
-    yr_lo = int((year_range or [2000, 2030])[0])
-    yr_hi = int((year_range or [2000, 2030])[1])
+    _yr = year_range or [2000, 2030]
+    yr_lo = int(_yr[0])
+    yr_hi = int(_yr[0]) if single_year_toggle else int(_yr[1])
     obs_years = ts.dates.astype("datetime64[Y]").astype(int) + 1970
     year_keep = (obs_years >= yr_lo) & (obs_years <= yr_hi)
     mask &= year_keep
