@@ -255,7 +255,6 @@ def _initial_map_children() -> list:
                     },
                     hoverStyle={"color": "#ffff00", "weight": 3},
                     zoomToBoundsOnClick=False,
-                    bubblingMouseEvents=False,
                 )
             )
     return children
