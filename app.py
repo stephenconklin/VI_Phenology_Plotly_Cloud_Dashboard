@@ -451,6 +451,26 @@ else:
                     "width": 320, "zIndex": 9999,
                 },
             ),
+            html.Div(
+                [
+                    "Stephen Conklin · ",
+                    html.A(
+                        "github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
+                        href="https://github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
+                        target="_blank",
+                        style={"color": "inherit"},
+                    ),
+                ],
+                style={
+                    "position": "fixed",
+                    "bottom": 6,
+                    "left": 10,
+                    "fontSize": "0.72em",
+                    "color": "#888",
+                    "zIndex": 9998,
+                    "pointerEvents": "auto",
+                },
+            ),
         ],
         fluid=True,
         style={"padding": 0, "overflow": "hidden"},
