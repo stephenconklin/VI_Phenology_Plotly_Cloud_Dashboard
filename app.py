@@ -126,7 +126,7 @@ except FileNotFoundError as _e:
 TILE_OPTIONS = [
     {"label": v["label"], "value": k}
     for k, v in LEAFLET_TILE_SERVICES.items()
-]
+] + [{"label": "No Basemap", "value": "none"}]
 
 # Basemap metric options (flat list with disabled group headers)
 _fast_group  = [{"label": lbl, "value": FAST_BASEMAP_METRICS[lbl]}
@@ -276,7 +276,7 @@ _source_warning = (
 )
 
 _sidebar_content = [
-    html.H5("BioSCape Phenology Dashboard", style={"marginBottom": "4px"}),
+    html.H5("BioSCape Phenology Explorer", style={"marginBottom": "4px"}),
     html.Hr(style={"margin": "4px 0"}),
 
     html.Label("Region", className="form-label fw-semibold"),
@@ -641,7 +641,10 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
     )
 
     # --- Tile layer ---
-    tile_props = get_tile_layer_props(basemap_style or "World_Imagery")
+    if basemap_style == "none":
+        tile_props = {"url": "", "attribution": "", "maxZoom": 18}
+    else:
+        tile_props = get_tile_layer_props(basemap_style or "World_Imagery")
 
     # --- Colorbar ---
     valid  = z[~np.isnan(z)]
