@@ -276,7 +276,19 @@ _source_warning = (
 )
 
 _sidebar_content = [
-    html.H5("BioSCape Phenology Explorer", style={"marginBottom": "4px"}),
+    html.H5("BioSCape Phenology Explorer", style={"marginBottom": "2px"}),
+    html.Div(
+        [
+            "Stephen Conklin · ",
+            html.A(
+                "GitHub",
+                href="https://github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
+                target="_blank",
+                style={"color": "inherit"},
+            ),
+        ],
+        style={"fontSize": "0.75em", "color": "#888", "marginBottom": "4px"},
+    ),
     html.Hr(style={"margin": "4px 0"}),
 
     html.Label("Region", className="form-label fw-semibold"),
@@ -449,26 +461,6 @@ else:
                 style={
                     "position": "fixed", "top": 10, "right": 10,
                     "width": 320, "zIndex": 9999,
-                },
-            ),
-            html.Div(
-                [
-                    "Stephen Conklin · ",
-                    html.A(
-                        "github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
-                        href="https://github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
-                        target="_blank",
-                        style={"color": "inherit"},
-                    ),
-                ],
-                style={
-                    "position": "fixed",
-                    "bottom": 6,
-                    "left": 10,
-                    "fontSize": "0.72em",
-                    "color": "#888",
-                    "zIndex": 9998,
-                    "pointerEvents": "auto",
                 },
             ),
         ],
