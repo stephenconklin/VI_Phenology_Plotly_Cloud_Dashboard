@@ -778,6 +778,7 @@ def compute_basemap_metric(
         z = da_c.std(dim="time").compute(scheduler="synchronous").values
     elif metric == "data_coverage":
         z = da_c.notnull().mean(dim="time").compute(scheduler="synchronous").values
+        z[z == 0.0] = np.nan  # pixels with no valid obs → transparent
     else:
         raise ValueError(f"Unknown on-the-fly basemap metric: {metric!r}")
 
@@ -807,7 +808,7 @@ def load_metrics_for_basemap(
 
     Supports both local paths and GCS URIs.
     """
-    open_kwargs: dict = {"mask_and_scale": True}
+    open_kwargs: dict = {"mask_and_scale": True, "decode_timedelta": False}
     if _is_gcs(metrics_path):
         open_kwargs["engine"] = "h5netcdf"
         open_kwargs["storage_options"] = _gcs_storage_options()

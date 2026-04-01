@@ -57,6 +57,7 @@ from config import (
     METRIC_GROUPS,
     METRIC_LABELS,
     PIXEL_METRIC_CONFIG,
+    NONNEGATIVE_METRICS,
     SHAPEFILE_LABEL_FIELDS,
     SHAPEFILE_PATHS,
     VI_VALID_RANGE,
@@ -476,14 +477,25 @@ else:
 def _compute_colorscale_limits(
     z: np.ndarray,
     sel: str,
+    metric: str = "",
 ) -> tuple[float | None, float | None]:
-    """Return (zmin, zmax) based on the SD-clipping selection."""
+    """Return (zmin, zmax) based on the SD-clipping selection.
+
+    For metrics in NONNEGATIVE_METRICS, zmin is floored to 0 — SD-clipping
+    can otherwise produce a negative lower bound (e.g. peak_doy_std with
+    mean=8 days and sd=10 days at 2σ → zmin = -12 days) even though the
+    metric value cannot be negative by construction.
+    """
     if sel == "full":
         return None, None
     z_mean = float(np.nanmean(z))
     z_std  = float(np.nanstd(z))
     n_sd   = {"1sd": 1, "2sd": 2, "3sd": 3}.get(sel, 2)
-    return z_mean - n_sd * z_std, z_mean + n_sd * z_std
+    zmin = z_mean - n_sd * z_std
+    zmax = z_mean + n_sd * z_std
+    if metric in NONNEGATIVE_METRICS:
+        zmin = max(0.0, zmin)
+    return zmin, zmax
 
 
 def _safe_float(v) -> float | None:
@@ -644,8 +656,13 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
         else:
             z, lon, lat = hit
 
+    # Zero data-coverage pixels are outside the datacube extent and should be
+    # transparent, not rendered as the low end of the colorscale.
+    if metric == "data_coverage":
+        z[z == 0.0] = np.nan
+
     # --- Colorscale limits ---
-    zmin, zmax = _compute_colorscale_limits(z, colorscale_range or "3sd")
+    zmin, zmax = _compute_colorscale_limits(z, colorscale_range or "3sd", metric)
 
     # --- Overlay PNG ---
     overlay_url, bounds = get_overlay_url_and_bounds(

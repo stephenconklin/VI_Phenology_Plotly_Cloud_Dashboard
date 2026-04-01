@@ -28,7 +28,7 @@ from PIL import Image as PILImage
 import pandas as pd
 from plotly.subplots import make_subplots as _make_subplots
 
-from config import METRIC_LABELS, METRIC_GROUPS, VI_VALID_RANGE
+from config import METRIC_LABELS, METRIC_GROUPS, NONNEGATIVE_METRICS, VI_VALID_RANGE
 from modules.phenology_metrics import _build_whittaker_system, _whittaker_smooth_pixel
 
 
@@ -666,6 +666,8 @@ def make_metrics_annual_figure(
             if std_key and _valid(std_val):
                 hi = float(mean_val) + float(std_val)
                 lo = float(mean_val) - float(std_val)
+                if metric_key in NONNEGATIVE_METRICS:
+                    lo = max(0.0, lo)
                 fig_base.add_trace(
                     go.Scatter(
                         x=x_span + x_span[::-1],
