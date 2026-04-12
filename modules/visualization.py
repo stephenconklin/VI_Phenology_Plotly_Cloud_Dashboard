@@ -699,11 +699,12 @@ def make_metrics_annual_figure(
         title=dict(text=f"{region_id} — Annual Metric Trends", font=dict(size=13),
                    y=0.99, yanchor="top"),
         height=n_rows * 260 + 120,
-        legend=dict(orientation="h", yanchor="top", y=0.97, x=0,
+        autosize=False,   # fixed subplot grid height — wrapper scrolls vertically
+        legend=dict(orientation="h", yanchor="top", y=-0.03, x=0,
                     font=dict(size=10), traceorder="normal"),
         plot_bgcolor="#f8f8f8",
         paper_bgcolor="white",
-        margin=dict(l=65, r=25, t=110, b=50),
+        margin=dict(l=65, r=25, t=60, b=90),
         uirevision="metrics_annual",
     )
     # Reduce subplot title font so it fits within the inter-row gap

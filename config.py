@@ -18,9 +18,9 @@ from pathlib import Path
 # Override via the VI_DATACUBE_ROOT environment variable.
 DATACUBE_ROOT: str = os.environ.get(
     "VI_DATACUBE_ROOT",
-    # "/Volumes/ConklinGeospatialData/Data/BioSCape_SA_LVIS/VI_Phenology/netcdf_datacube",
+    "/Volumes/ConklinGeospatialData/Data/BioSCape_SA_LVIS/VI_Phenology/netcdf_datacube",
     # Public URL for Google Coud Storage Bucket: https://storage.googleapis.com/bioscape_phenology_data/
-    "gs://bioscape_phenology_data/"
+    # "gs://bioscape_phenology_data/"
 )
 
 # GCS project ID — required when using Application Default Credentials with a

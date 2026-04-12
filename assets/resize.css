@@ -1,0 +1,71 @@
+/* Drag-to-resize layout for the main panel column */
+
+#main-panel-col {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Map wrapper — height driven by CSS variable set by JS */
+#map-wrapper {
+  flex: 0 0 var(--map-h, 50vh);
+  min-height: 80px;
+  overflow: hidden;
+}
+
+/* Drag handle bar */
+#resize-divider {
+  flex: 0 0 6px;
+  background: #c8d0c8;
+  cursor: row-resize;
+  position: relative;
+  z-index: 100;
+  transition: background 0.15s;
+}
+
+#resize-divider:hover,
+#resize-divider.dragging {
+  background: #7aaa7a;
+}
+
+/* Grip dots */
+#resize-divider::after {
+  content: "· · · · ·";
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #888;
+  font-size: 10px;
+  letter-spacing: 3px;
+  pointer-events: none;
+  line-height: 12px;
+}
+
+/* Charts/tabs wrapper — takes all remaining space */
+#charts-wrapper {
+  flex: 1 1 0;
+  min-height: 80px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+#charts-wrapper .nav-tabs    { flex: 0 0 auto; }
+#charts-wrapper .tab-content { flex: 1 1 0; overflow: hidden; }
+#charts-wrapper .tab-pane    { height: 100%; }
+
+/* dcc.Graph fills its container */
+#charts-wrapper .js-plotly-plot,
+#charts-wrapper .plotly {
+  height: 100% !important;
+}
+
+/* Metric Trends: inner wrapper scrolls vertically (subplot grid is taller than pane) */
+#metrics-annual-chart-wrapper {
+  height: 100%;
+  overflow-y: auto;
+}

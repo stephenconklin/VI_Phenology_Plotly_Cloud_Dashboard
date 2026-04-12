@@ -215,7 +215,7 @@ _SIDEBAR_STYLE = {
 }
 
 _MAP_STYLE = {
-    "height":         "50vh",
+    "height":         "100%",   # wrapper (#map-wrapper) drives height via CSS var
     "width":          "100%",
     "imageRendering": "pixelated",
 }
@@ -387,51 +387,58 @@ _sidebar = dbc.Col(_sidebar_content, width=3, style=_SIDEBAR_STYLE)
 
 _main_panel = dbc.Col(
     [
-        dl.Map(
-            id="main-map",
-            center=_INITIAL_CENTER,
-            zoom=_INITIAL_ZOOM,
-            style=_MAP_STYLE,
-            children=_initial_map_children(),
+        html.Div(
+            dl.Map(
+                id="main-map",
+                center=_INITIAL_CENTER,
+                zoom=_INITIAL_ZOOM,
+                style=_MAP_STYLE,
+                children=_initial_map_children(),
+            ),
+            id="map-wrapper",
         ),
-        dbc.Tabs(
-            [
-                dbc.Tab(
-                    dcc.Graph(id="timeseries-chart",
-                              figure=make_empty_timeseries_figure(),
-                              style={"height": "38vh"},
-                              config={"responsive": True}),
-                    label="Raw VI",
-                ),
-                dbc.Tab(
-                    dcc.Graph(id="annual-cycle-chart",
-                              figure=make_empty_timeseries_figure(),
-                              style={"height": "38vh"},
-                              config={"responsive": True}),
-                    label="Annual Cycles",
-                ),
-                dbc.Tab(
-                    html.Div(
-                        dcc.Graph(id="metrics-annual-chart",
+        html.Div(id="resize-divider"),
+        html.Div(
+            dbc.Tabs(
+                [
+                    dbc.Tab(
+                        dcc.Graph(id="timeseries-chart",
                                   figure=make_empty_timeseries_figure(),
-                                  style={"height": "38vh"},
+                                  style={"height": "100%"},
                                   config={"responsive": True}),
-                        style={"overflowY": "auto"},
+                        label="Raw VI",
                     ),
-                    label="Metric Trends",
-                ),
-                dbc.Tab(
-                    dcc.Graph(id="phenology-scatter-chart",
-                              figure=make_empty_timeseries_figure(),
-                              style={"height": "38vh"},
-                              config={"responsive": True}),
-                    label="Phenology Scatter",
-                ),
-            ],
-            style={"marginTop": "8px"},
+                    dbc.Tab(
+                        dcc.Graph(id="annual-cycle-chart",
+                                  figure=make_empty_timeseries_figure(),
+                                  style={"height": "100%"},
+                                  config={"responsive": True}),
+                        label="Annual Cycles",
+                    ),
+                    dbc.Tab(
+                        html.Div(
+                            dcc.Graph(id="metrics-annual-chart",
+                                      figure=make_empty_timeseries_figure(),
+                                      style={"height": "100%"},
+                                      config={"responsive": True}),
+                            id="metrics-annual-chart-wrapper",
+                        ),
+                        label="Metric Trends",
+                    ),
+                    dbc.Tab(
+                        dcc.Graph(id="phenology-scatter-chart",
+                                  figure=make_empty_timeseries_figure(),
+                                  style={"height": "100%"},
+                                  config={"responsive": True}),
+                        label="Phenology Scatter",
+                    ),
+                ],
+            ),
+            id="charts-wrapper",
         ),
     ],
     width=9,
+    id="main-panel-col",
 )
 
 if _STARTUP_ERROR:
@@ -776,14 +783,13 @@ def update_selected_pixel(clickData, region, basemap_info):
     Input("selected-pixel", "data"),
     Input("year-range", "value"),
     Input("single-year-toggle", "value"),
-    Input("colorscale-range", "value"),
+    Input("basemap-info", "data"),
     Input("lambda-slider", "value"),
-    State("basemap-info", "data"),
     State("region-dropdown", "value"),
 )
 def compute_pixel_result(
-    selected_pixel, year_range, single_year_toggle, colorscale_range,
-    lambda_val, basemap_info, region,
+    selected_pixel, year_range, single_year_toggle,
+    basemap_info, lambda_val, region,
 ):
     if selected_pixel is None or selected_pixel.get("region") != region:
         return None
