@@ -326,6 +326,35 @@ input.slider-tooltip,
 #metrics-table td:last-child { color: var(--cyan) !important; text-align: right; }
 #metrics-table .selected-row td { color: var(--orange) !important; }
 
+/* North arrow — map overlay (below zoom controls) */
+#north-arrow {
+  position: absolute;
+  top: 84px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(6, 12, 18, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 4px 3px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  width: 32px;
+  text-align: center;
+}
+
+/* Scale control — dark theme override */
+.leaflet-control-scale-line {
+  background: rgba(6, 12, 18, 0.72) !important;
+  border: 1px solid var(--border) !important;
+  border-top: none !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-family: 'Space Mono', monospace !important;
+  font-size: 9px !important;
+  line-height: 1.4 !important;
+  padding: 1px 4px !important;
+  backdrop-filter: blur(4px);
+}
+
 /* Colorbar — map corner overlay */
 #colorbar-div {
   position: absolute;

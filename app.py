@@ -31,6 +31,7 @@ import os as _os
 _os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "false")
 _os.environ.setdefault("GRPC_POLL_STRATEGY", "epoll1")
 
+import base64
 import math
 from pathlib import Path
 from types import SimpleNamespace
@@ -187,6 +188,15 @@ def _compute_initial_map_view() -> tuple[list[float], int]:
 
 
 _INITIAL_CENTER, _INITIAL_ZOOM = _compute_initial_map_view()
+
+_NORTH_ARROW_SRC = "data:image/svg+xml;base64," + base64.b64encode((
+    '<svg viewBox="0 0 24 36" width="24" height="36" xmlns="http://www.w3.org/2000/svg">'
+    '<polygon points="12,2 7,22 12,18" fill="rgba(91,227,255,0.85)"/>'
+    '<polygon points="12,2 12,18 17,22" fill="rgba(255,255,255,0.18)"/>'
+    '<text x="12" y="34" text-anchor="middle" font-size="10"'
+    ' font-family="Space Mono,monospace" fill="rgba(91,227,255,0.9)" font-weight="bold">N</text>'
+    '</svg>'
+).encode()).decode()
 _FAST_METRIC_KEYS: frozenset[str] = frozenset(FAST_BASEMAP_METRICS.values())
 
 
@@ -247,6 +257,7 @@ def _initial_map_children() -> list:
             position=[0, 0],
             opacity=0,
         ),
+        dl.ScaleControl(position="bottomleft", imperial=False),
     ]
     # Static shapefile layers — visibility toggled by callback, not re-created
     for i, gj_data in enumerate(_SHAPEFILE_GEOJSON):
@@ -431,6 +442,12 @@ _main_panel = dbc.Col(
                     children=_initial_map_children(),
                 ),
                 html.Div(id="colorbar-div"),
+                html.Div(
+                    html.Img(src=_NORTH_ARROW_SRC,
+                             style={"display": "block", "margin": "0 auto",
+                                    "width": "24px", "height": "36px"}),
+                    id="north-arrow",
+                ),
             ],
             id="map-wrapper",
             style={"position": "relative"},
