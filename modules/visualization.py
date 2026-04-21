@@ -224,7 +224,7 @@ def make_metric_overlay_png(
     nan_mask = np.isnan(z)
     norm = mcolors.Normalize(vmin=zmin, vmax=zmax)
     rgba = cmap(norm(z), bytes=True).copy()  # (ny, nx, 4) uint8
-    rgba[..., 3] = np.where(nan_mask, 0, int(np.clip(opacity, 0.0, 1.0) * 255))
+    rgba[..., 3] = np.where(nan_mask, 0, 255)  # opacity handled by ImageOverlay prop
 
     # Ensure north-first row order (top of PNG = north)
     if lat[0, 0] < lat[-1, 0]:
@@ -237,41 +237,58 @@ def make_metric_overlay_png(
     return "data:image/png;base64," + base64.b64encode(buf.read()).decode()
 
 
-def make_colorbar_html(
+def make_colorbar_component(
     metric_key: str,
     zmin: float,
     zmax: float,
-) -> str:
-    """
-    Render a horizontal colorbar as a tiny matplotlib PNG and return HTML
-    for display in the Dash sidebar.
-    """
-    label, units = METRIC_LABELS.get(metric_key, (metric_key, ""))
-    title = f"{label} ({units})" if units else label
+):
+    """Return a Dash html.Div colorbar for the map corner overlay."""
+    from dash import html as _html
 
-    fig = MplFigure(figsize=(3.2, 0.32))
-    ax  = fig.add_axes([0.02, 0.05, 0.96, 0.85])
-    matplotlib.colorbar.ColorbarBase(
+    label, units = METRIC_LABELS.get(metric_key, (metric_key, ""))
+
+    fig = MplFigure(figsize=(0.45, 2.6))
+    ax  = fig.add_axes([0.22, 0.04, 0.42, 0.92])
+    cb  = matplotlib.colorbar.ColorbarBase(
         ax,
         cmap=matplotlib.colormaps[_mpl_cmap_for(metric_key)],
         norm=mcolors.Normalize(vmin=zmin, vmax=zmax),
-        orientation="horizontal",
-    ).ax.tick_params(labelsize=6)
+        orientation="vertical",
+    )
+    cb.ax.tick_params(labelsize=6, colors="white", length=2, pad=2)
+    cb.outline.set_edgecolor((0.357, 0.890, 1.0, 0.3))
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="PNG", dpi=96, bbox_inches="tight", transparent=True)
+    fig.savefig(buf, format="PNG", dpi=130, bbox_inches="tight", transparent=True)
     buf.seek(0)
     b64 = base64.b64encode(buf.read()).decode()
     import matplotlib.pyplot as _plt; _plt.close(fig)  # noqa: E702
 
-    return (
-        f'<div style="font-size:0.72em;color:#444;margin-bottom:1px">{title}</div>'
-        f'<img src="data:image/png;base64,{b64}" '
-        f'style="width:100%;max-width:280px;height:auto"/>'
-        f'<div style="display:flex;justify-content:space-between;'
-        f'font-size:0.68em;color:#666">'
-        f'<span>{zmin:.4g}</span><span>{zmax:.4g}</span></div>'
-    )
+    mono = "'Space Mono', monospace"
+    return _html.Div([
+        _html.Div(label, style={
+            "fontFamily": mono, "fontSize": "9px",
+            "color": "rgba(255,255,255,0.6)", "letterSpacing": "0.04em",
+            "textAlign": "center", "marginBottom": "2px", "lineHeight": "1.3",
+        }),
+        _html.Div(units, style={
+            "fontFamily": mono, "fontSize": "7px",
+            "color": "rgba(255,255,255,0.35)", "textAlign": "center",
+            "marginBottom": "5px",
+        }) if units else None,
+        _html.Div(f"{zmax:.4g}", style={
+            "fontFamily": mono, "fontSize": "8px",
+            "color": "rgba(91,227,255,0.7)", "textAlign": "center", "marginBottom": "2px",
+        }),
+        _html.Img(
+            src=f"data:image/png;base64,{b64}",
+            style={"width": "34px", "height": "auto", "display": "block", "margin": "0 auto"},
+        ),
+        _html.Div(f"{zmin:.4g}", style={
+            "fontFamily": mono, "fontSize": "8px",
+            "color": "rgba(91,227,255,0.7)", "textAlign": "center", "marginTop": "2px",
+        }),
+    ])
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +319,7 @@ def make_timeseries_figure(
         x=obs_dates,
         y=obs_vi,
         mode="markers",
-        marker=dict(color="#888888", size=4, opacity=0.65),
+        marker=dict(color="rgba(91,227,255,0.55)", size=4, opacity=0.85),
         name="Raw observations",
         hovertemplate=f"Date: %{{x}}<br>{vi_var}: %{{y:.4f}}<extra></extra>",
     )
@@ -311,7 +328,7 @@ def make_timeseries_figure(
         x=daily_date_strs,
         y=smooth_vi,
         mode="lines",
-        line=dict(color="#2ca02c", width=2),
+        line=dict(color="#ff8a3d", width=2),
         name="Whittaker smoothed",
         hovertemplate=f"Date: %{{x}}<br>{vi_var}: %{{y:.4f}}<extra></extra>",
         connectgaps=False,
@@ -341,18 +358,22 @@ def make_timeseries_figure(
                 ),
                 font=dict(size=13),
             ),
-            xaxis=dict(title="Date", showgrid=True, gridcolor="#e0e0e0"),
+            xaxis=dict(title="Date", showgrid=True, gridcolor="rgba(91,227,255,0.08)", linecolor="rgba(91,227,255,0.15)", zerolinecolor="rgba(91,227,255,0.1)"),
             yaxis=dict(
                 title=vi_var,
                 range=y_range,
                 showgrid=True,
-                gridcolor="#e0e0e0",
+                gridcolor="rgba(91,227,255,0.08)",
+                linecolor="rgba(91,227,255,0.15)",
+                zerolinecolor="rgba(91,227,255,0.1)",
             ),
             autosize=True,
             legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0),
             margin=dict(l=60, r=20, t=70, b=50),
             uirevision=f"timeseries-{zmin}-{zmax}",
-            plot_bgcolor="#f8f8f8",
+            plot_bgcolor="#060c12",
+            paper_bgcolor="#060c12",
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
         ),
     )
     return fig
@@ -364,20 +385,21 @@ def make_empty_timeseries_figure() -> go.Figure:
         layout=go.Layout(
             title=dict(
                 text="Click a pixel on the map to view its time series",
-                font=dict(size=13, color="#888888"),
+                font=dict(size=13, color="rgba(255,255,255,0.28)", family="'Space Mono', monospace"),
             ),
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
             autosize=True,
-            plot_bgcolor="#f8f8f8",
-            paper_bgcolor="#f8f8f8",
+            plot_bgcolor="#060c12",
+            paper_bgcolor="#060c12",
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.45)"),
             annotations=[
                 dict(
                     text="← Select a pixel",
                     x=0.5, y=0.5,
                     xref="paper", yref="paper",
                     showarrow=False,
-                    font=dict(size=16, color="#aaaaaa"),
+                    font=dict(size=16, color="rgba(255,255,255,0.2)", family="'Space Mono', monospace"),
                 )
             ],
         )
@@ -425,8 +447,9 @@ _STD_KEY: dict[str, str] = {
 }
 
 _YEAR_PALETTE: list[str] = [
-    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
-    "#9467bd", "#8c564b", "#e377c2", "#17becf",
+    "#5be3ff", "#ff9f43", "#c8e63f", "#ff6b9d",
+    "#a29bfe", "#2ed573", "#ffd32a", "#ff6348",
+    "#74b9ff", "#00d2d3", "#fd9644", "#b8e994",
 ]
 
 
@@ -489,7 +512,7 @@ def make_annual_cycle_figure(
             mode="lines",
             name="Mean",
             legendgroup="mean",
-            line=dict(color="#000000", width=2.5),
+            line=dict(color="rgba(255,255,255,0.85)", width=2.5),
             hovertemplate="Mean, DOY %{x}: %{y:.4f}<extra></extra>",
         ))
 
@@ -506,20 +529,23 @@ def make_annual_cycle_figure(
         data=traces,
         layout=go.Layout(
             title=dict(text=f"{region_id} — Annual {vi_var} Cycles", font=dict(size=13)),
-            xaxis=dict(title="Day of Year", showgrid=True, gridcolor="#e0e0e0",
-                       range=[1, 366]),
+            xaxis=dict(title="Day of Year", showgrid=True, gridcolor="rgba(91,227,255,0.08)",
+                       linecolor="rgba(91,227,255,0.15)", range=[1, 366]),
             yaxis=dict(
                 title=vi_var,
                 range=y_range,
                 showgrid=True,
-                gridcolor="#e0e0e0",
+                gridcolor="rgba(91,227,255,0.08)",
+                linecolor="rgba(91,227,255,0.15)",
             ),
             legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0,
                         font=dict(size=10)),
             autosize=True,
             margin=dict(l=60, r=20, t=70, b=50),
             uirevision=f"annual_cycle-{zmin}-{zmax}",
-            plot_bgcolor="#f8f8f8",
+            plot_bgcolor="#060c12",
+            paper_bgcolor="#060c12",
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
         ),
     )
 
@@ -543,20 +569,19 @@ def make_phenology_scatter_figure(
     doy_arr  = dates_dt.day_of_year.to_numpy()
     year_arr = dates_dt.year.to_numpy()
 
-    scatter = go.Scatter(
-        x=doy_arr.tolist(),
-        y=vi_vals.tolist(),
-        mode="markers",
-        marker=dict(
-            color=year_arr.tolist(),
-            colorscale="Plasma",
-            colorbar=dict(title="Year", thickness=14, len=0.7),
-            size=4,
-            opacity=0.55,
-        ),
-        name="Observations",
-        hovertemplate="DOY %{x}, %{marker.color}: %{y:.4f}<extra></extra>",
-    )
+    unique_years = sorted(set(year_arr.tolist()))
+    scatter_traces = []
+    for i_yr, yr in enumerate(unique_years):
+        mask = year_arr == yr
+        scatter_traces.append(go.Scatter(
+            x=doy_arr[mask].tolist(),
+            y=vi_vals[mask].tolist(),
+            mode="markers",
+            marker=dict(color=_year_color(i_yr), size=4, opacity=0.7),
+            name=str(yr),
+            legendgroup=str(yr),
+            hovertemplate=f"DOY %{{x}}, {yr}: %{{y:.4f}}<extra></extra>",
+        ))
 
     daily_y = np.zeros(366, dtype=np.float64)
     daily_w = np.zeros(366, dtype=np.float64)
@@ -576,7 +601,7 @@ def make_phenology_scatter_figure(
         y=smoothed_doy.tolist(),
         mode="lines",
         name="Mean fit",
-        line=dict(color="#000000", width=2.5),
+        line=dict(color="rgba(255,255,255,0.85)", width=2.5),
         hovertemplate="Mean fit, DOY %{x}: %{y:.4f}<extra></extra>",
     )
 
@@ -585,22 +610,24 @@ def make_phenology_scatter_figure(
     y_range = [_dmin - _pad, _dmax + _pad]
 
     return go.Figure(
-        data=[scatter, mean_line],
+        data=scatter_traces + [mean_line],
         layout=go.Layout(
             title=dict(
                 text=f"{region_id} — {vi_var} Phenology Scatter",
                 font=dict(size=13),
             ),
             xaxis=dict(title="Day of Year", range=[1, 366],
-                       showgrid=True, gridcolor="#e0e0e0"),
+                       showgrid=True, gridcolor="rgba(91,227,255,0.08)", linecolor="rgba(91,227,255,0.15)"),
             yaxis=dict(title=vi_var, range=y_range,
-                       showgrid=True, gridcolor="#e0e0e0"),
+                       showgrid=True, gridcolor="rgba(91,227,255,0.08)", linecolor="rgba(91,227,255,0.15)"),
             legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0,
                         font=dict(size=10)),
             autosize=True,
             margin=dict(l=60, r=20, t=70, b=50),
             uirevision=f"phenology_scatter-{zmin}-{zmax}",
-            plot_bgcolor="#f8f8f8",
+            plot_bgcolor="#060c12",
+            paper_bgcolor="#060c12",
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
         ),
     )
 
@@ -673,8 +700,8 @@ def make_metrics_annual_figure(
                         x=x_span + x_span[::-1],
                         y=[hi, hi, lo, lo],
                         fill="toself",
-                        fillcolor="rgba(0,0,0,0.08)",
-                        line=dict(color="rgba(0,0,0,0)"),
+                        fillcolor="rgba(91,227,255,0.10)",
+                        line=dict(color="rgba(91,227,255,0)"),
                         showlegend=False,
                         hoverinfo="skip",
                     ),
@@ -688,7 +715,7 @@ def make_metrics_annual_figure(
                     name="Mean",
                     legendgroup="mean",
                     showlegend=(plot_idx == 0),
-                    line=dict(color="#000000", width=1.8, dash="dash"),
+                    line=dict(color="rgba(91,227,255,0.75)", width=1.8, dash="dash"),
                     hovertemplate=f"Mean: {float(mean_val):.4f}<extra></extra>",
                 ),
                 row=row, col=col,
@@ -701,9 +728,11 @@ def make_metrics_annual_figure(
         height=n_rows * 260 + 120,
         autosize=False,   # fixed subplot grid height — wrapper scrolls vertically
         legend=dict(orientation="h", yanchor="top", y=-0.03, x=0,
-                    font=dict(size=10), traceorder="normal"),
-        plot_bgcolor="#f8f8f8",
-        paper_bgcolor="white",
+                    font=dict(size=10, color="rgba(255,255,255,0.55)", family="'Space Mono', monospace"), traceorder="normal",
+                    bgcolor="rgba(6,12,18,0.7)", bordercolor="rgba(91,227,255,0.15)", borderwidth=1),
+        plot_bgcolor="#060c12",
+        paper_bgcolor="#060c12",
+        font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
         margin=dict(l=65, r=25, t=60, b=90),
         uirevision="metrics_annual",
     )
@@ -752,8 +781,9 @@ def make_metrics_table(
     for group_name, metric_keys in METRIC_GROUPS.items():
         rows.append(
             f'<tr><td colspan="3" style="'
-            f'font-weight:bold;background:#e8f0e8;'
-            f'padding:4px 6px;font-size:0.8em;letter-spacing:0.05em;">'
+            f'font-family:\'Space Mono\',monospace;font-weight:400;'
+            f'background:rgba(91,227,255,0.06);color:rgba(91,227,255,0.6);'
+            f'padding:4px 6px;font-size:0.75em;letter-spacing:0.1em;">'
             f'{group_name.upper()}</td></tr>'
         )
         for key in metric_keys:
@@ -761,24 +791,28 @@ def make_metrics_table(
             label, units = METRIC_LABELS.get(key, (key, ""))
             val_str = f"{val:.4f}" if (val is not None and not np.isnan(float(val) if val is not None else float("nan"))) else "N/A"
             is_selected = key == selected_metric
-            highlight = "font-weight:bold;background:#fff9c4;" if is_selected else ""
+            highlight = (
+                "background:rgba(255,138,61,0.12);color:#ff8a3d;"
+                if is_selected else
+                "color:rgba(255,255,255,0.55);"
+            )
 
             swatch = ""
             if is_selected and zmin is not None and zmax is not None and val_str != "N/A":
                 swatch = _metric_swatch_html(val, key, zmin, zmax)
 
             rows.append(
-                f'<tr style="{highlight}">'
-                f'<td style="padding:2px 6px;font-size:0.78em">{label}</td>'
-                f'<td style="padding:2px 6px;font-size:0.78em;text-align:right">'
+                f'<tr style="border-bottom:1px solid rgba(91,227,255,0.06);{highlight}">'
+                f'<td style="padding:3px 6px;font-size:0.78em;font-family:\'Space Mono\',monospace">{label}</td>'
+                f'<td style="padding:3px 6px;font-size:0.78em;font-family:\'Space Mono\',monospace;text-align:right;color:#5be3ff">'
                 f'{swatch}{val_str}</td>'
-                f'<td style="padding:2px 4px;font-size:0.72em;color:#666">{units}</td>'
+                f'<td style="padding:2px 4px;font-size:0.72em;color:rgba(255,255,255,0.28);font-family:\'Space Mono\',monospace">{units}</td>'
                 f'</tr>'
             )
 
     return (
         '<table style="width:100%;border-collapse:collapse;'
-        'font-family:monospace">'
-        + "".join(rows)
+        'font-family:\'Space Mono\',monospace;">'
+        + "\n".join(rows)
         + "</table>"
     )

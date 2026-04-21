@@ -35,6 +35,7 @@
       var maxH   = panelH - 6 - 80;   // 6px divider + 80px min chart area
       var newH   = Math.min(Math.max(startMapH + delta, minH), maxH);
       mainPanel.style.setProperty("--map-h", newH + "px");
+      mainPanel.style.setProperty("--charts-h", (panelH - newH - 6) + "px");
     });
 
     document.addEventListener("mouseup", function () {
@@ -65,6 +66,7 @@
       var maxH   = panelH - 6 - 80;
       var newH   = Math.min(Math.max(startMapH + delta, minH), maxH);
       mainPanel.style.setProperty("--map-h", newH + "px");
+      mainPanel.style.setProperty("--charts-h", (panelH - newH - 6) + "px");
     }, { passive: true });
 
     document.addEventListener("touchend", function () {
@@ -86,6 +88,13 @@
       // Small delay so the CSS flex layout finishes reflowing before resize fires.
       setTimeout(fireResize, 50);
     }
+
+    // Set --charts-h on init so the CSS calc is valid before any drag.
+    (function () {
+      var panelH = mainPanel.getBoundingClientRect().height;
+      var mapH   = mapWrapper.getBoundingClientRect().height;
+      mainPanel.style.setProperty("--charts-h", (panelH - mapH - 6) + "px");
+    })();
 
     // Fire once on init so Leaflet recalculates its size after React hydration.
     setTimeout(fireResize, 200);

@@ -1,0 +1,498 @@
+/*
+ * BioSCape Phenology Explorer — HUD Dark Theme
+ * Drop this file into assets/ — Dash auto-loads it.
+ * Matches the Sentinel-2 Orbit UI aesthetic.
+ */
+
+/* ── Google Fonts ────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ── Design tokens ───────────────────────────────────────── */
+:root {
+  --bg:         #060c12;
+  --bg-sidebar: #07101a;
+  --bg-panel:   #0a1520;
+  --bg-card:    #0d1c2e;
+  --cyan:       #5be3ff;
+  --cyan-dim:   rgba(91, 227, 255, 0.10);
+  --cyan-mid:   rgba(91, 227, 255, 0.32);
+  --orange:     #ff8a3d;
+  --text-hi:    rgba(255, 255, 255, 0.92);
+  --text-mid:   rgba(255, 255, 255, 0.55);
+  --text-lo:    rgba(255, 255, 255, 0.28);
+  --border:     rgba(91, 227, 255, 0.13);
+  --border-hi:  rgba(91, 227, 255, 0.38);
+  --font-mono:  'Space Mono', monospace;
+  --font-sans:  'Inter', sans-serif;
+  --fs-scale:   1;
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+html, body {
+  background: var(--bg) !important;
+  color: var(--text-hi) !important;
+  font-family: var(--font-sans) !important;
+  font-size: calc(14px * var(--fs-scale));
+}
+
+/* Corner bracket decorations on the shell */
+body::before, body::after,
+#react-entry-point::before,
+#react-entry-point::after {
+  content: '';
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  z-index: 9999;
+  pointer-events: none;
+}
+body::before  { top: 8px;    left: 8px;    border-top: 1.5px solid var(--cyan); border-left: 1.5px solid var(--cyan); }
+body::after   { bottom: 8px; right: 8px;   border-bottom: 1.5px solid var(--cyan); border-right: 1.5px solid var(--cyan); }
+
+/* ── Bootstrap container / row overrides ────────────────── */
+.container-fluid { padding: 0 !important; }
+.row.g-0         { --bs-gutter-x: 0; }
+
+/* ── Sidebar column ──────────────────────────────────────── */
+/* app.py sets width=3; this targets the sidebar Col */
+.col-3 {
+  background: var(--bg-sidebar) !important;
+  border-right: 1px solid var(--border) !important;
+  padding: 18px 14px 16px !important;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-dim) transparent;
+}
+.col-3::-webkit-scrollbar       { width: 4px; }
+.col-3::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+/* ── Sidebar headings ────────────────────────────────────── */
+.col-3 h5 {
+  font-family: var(--font-mono) !important;
+  font-size: calc(15px * var(--fs-scale)) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-hi) !important;
+  margin-bottom: 2px !important;
+}
+.col-3 h6 {
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mid) !important;
+  margin-bottom: 6px !important;
+}
+
+/* Author line */
+.col-3 > div:nth-child(2) {
+  color: var(--text-lo) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  letter-spacing: 0.04em;
+}
+.col-3 a { color: var(--cyan-mid) !important; text-decoration: none !important; }
+.col-3 a:hover { color: var(--cyan) !important; }
+
+/* ── HR dividers ─────────────────────────────────────────── */
+.col-3 hr {
+  border: none !important;
+  border-top: 1px solid var(--border) !important;
+  margin: 10px 0 !important;
+  position: relative;
+}
+
+/* ── Form labels ─────────────────────────────────────────── */
+.col-3 .form-label {
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.13em !important;
+  text-transform: uppercase !important;
+  color: var(--text-mid) !important;
+  margin-bottom: 4px !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.col-3 .form-label::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 4px;
+  background: var(--cyan);
+  opacity: 0.55;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+/* ── Dash 4 Dropdown ─────────────────────────────────────── */
+.col-3 .dash-dropdown-wrapper,
+.col-3 .dash-dropdown {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 2px !important;
+  color: var(--text-hi) !important;
+  min-height: 30px !important;
+  box-shadow: none !important;
+}
+.col-3 .dash-dropdown-wrapper:hover,
+.col-3 .dash-dropdown:hover {
+  border-color: var(--cyan-mid) !important;
+}
+.col-3 .dash-dropdown-wrapper:focus-within,
+.col-3 .dash-dropdown:focus-within {
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 0 2px rgba(91,227,255,0.08) !important;
+}
+.col-3 .dash-dropdown-content {
+  background: transparent !important;
+}
+.col-3 .dash-dropdown-value {
+  color: var(--text-hi) !important;
+  font-size: calc(13px * var(--fs-scale)) !important;
+  font-family: var(--font-sans) !important;
+}
+.col-3 .dash-dropdown-placeholder {
+  color: var(--text-lo) !important;
+  font-size: calc(13px * var(--fs-scale)) !important;
+}
+.col-3 .dash-dropdown-trigger-icon,
+.col-3 .dash-dropdown-search-icon {
+  color: var(--cyan) !important;
+  opacity: 0.5;
+}
+.col-3 .dash-dropdown-action-button {
+  color: var(--cyan) !important;
+  background: transparent !important;
+  border: none !important;
+  opacity: 0.5;
+}
+.col-3 .dash-dropdown-action-button:hover { opacity: 1 !important; }
+
+/* Dropdown options panel */
+.dash-dropdown-options {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+}
+.dash-dropdown-option {
+  color: var(--text-mid) !important;
+  background: transparent !important;
+  font-size: calc(13px * var(--fs-scale)) !important;
+  font-family: var(--font-sans) !important;
+}
+.dash-dropdown-option:hover,
+.dash-dropdown-option[aria-selected="true"] {
+  background: var(--cyan-dim) !important;
+  color: var(--text-hi) !important;
+}
+.dash-dropdown-option.is-selected,
+.dash-dropdown-option[aria-current="true"] {
+  background: rgba(91,227,255,0.15) !important;
+  color: var(--cyan) !important;
+}
+.dash-dropdown-search {
+  background: var(--bg-card) !important;
+  border: none !important;
+  color: var(--text-hi) !important;
+  font-family: var(--font-sans) !important;
+  font-size: calc(13px * var(--fs-scale)) !important;
+  outline: none !important;
+}
+
+/* ── Dash Slider ─────────────────────────────────────────── */
+.col-3 .rc-slider-rail       { background: rgba(91,227,255,0.14) !important; height: 2px !important; }
+.col-3 .rc-slider-track      { background: var(--cyan) !important; opacity: 0.5; height: 2px !important; }
+.col-3 .rc-slider-handle {
+  background: var(--cyan) !important;
+  border: none !important;
+  box-shadow: 0 0 7px rgba(91,227,255,0.6) !important;
+  width: 12px !important; height: 12px !important;
+  margin-top: -5px !important;
+}
+.col-3 .rc-slider-handle:hover,
+.col-3 .rc-slider-handle:active {
+  box-shadow: 0 0 12px rgba(91,227,255,0.9) !important;
+}
+.col-3 .rc-slider-mark-text  { color: var(--text-lo) !important; font-family: var(--font-mono) !important; font-size: calc(10px * var(--fs-scale)) !important; letter-spacing: 0.05em; }
+.col-3 .rc-slider-dot        { background: var(--bg-card) !important; border-color: var(--border) !important; }
+.col-3 .rc-slider-dot-active { border-color: var(--cyan) !important; }
+
+/* Tooltip — covers both old rc-slider and Dash 4 input-based tooltips */
+.rc-slider-tooltip-inner {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--cyan) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  padding: 2px 7px !important;
+}
+.rc-slider-tooltip-placement-bottom .rc-slider-tooltip-arrow { border-bottom-color: var(--border) !important; }
+.rc-slider-tooltip-placement-top    .rc-slider-tooltip-arrow { border-top-color:    var(--border) !important; }
+
+/* Dash 4 drag tooltip (appears while dragging a slider handle) */
+.dash-slider-tooltip {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 2px !important;
+  color: var(--cyan) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  padding: 2px 6px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.dash-slider-tooltip > div {
+  color: var(--cyan) !important;
+  background: transparent !important;
+}
+
+/* Dash 4 slider range inputs (the min/max boxes flanking RangeSlider) */
+.dash-input-container,
+.dash-range-slider-input,
+.dash-range-slider-min-input,
+.dash-range-slider-max-input {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--cyan) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  outline: none !important;
+}
+.dash-range-slider-input:focus,
+.dash-range-slider-min-input:focus,
+.dash-range-slider-max-input:focus {
+  border-color: var(--cyan-mid) !important;
+  box-shadow: 0 0 0 2px rgba(91,227,255,0.08) !important;
+}
+/* Dash 4 single Slider tooltip input */
+.slider-tooltip,
+input.slider-tooltip,
+.rc-slider-tooltip-inner input {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--cyan) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  border-radius: 2px !important;
+  outline: none !important;
+}
+
+/* ── Checklist (Dash 4) ──────────────────────────────────── */
+.col-3 .dash-options-list-option-text {
+  color: var(--text-mid) !important;
+  font-size: calc(11px * var(--fs-scale)) !important;
+  font-family: var(--font-sans) !important;
+}
+.col-3 .dash-options-list-option-checkbox {
+  accent-color: var(--cyan) !important;
+  width: 12px !important;
+  height: 12px !important;
+  flex-shrink: 0;
+}
+.col-3 .dash-options-list-option-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 2px 0 !important;
+}
+
+/* ── Pixel info & metrics output divs ────────────────────── */
+#pixel-info, #metrics-table {
+  font-family: var(--font-mono) !important;
+  font-size: calc(11px * var(--fs-scale)) !important;
+  color: var(--text-mid) !important;
+  letter-spacing: 0.04em;
+}
+#pixel-info b, #metrics-table b { color: var(--cyan) !important; font-weight: 400; }
+#pixel-info p  { color: var(--text-lo) !important; font-style: italic; }
+
+/* Metrics HTML table rendered by make_metrics_table */
+#metrics-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(11px * var(--fs-scale));
+}
+#metrics-table tr   { border-bottom: 1px solid rgba(91,227,255,0.06) !important; }
+#metrics-table td   { padding: 3px 2px !important; color: var(--text-mid) !important; }
+#metrics-table td:last-child { color: var(--cyan) !important; text-align: right; }
+#metrics-table .selected-row td { color: var(--orange) !important; }
+
+/* Colorbar — map corner overlay */
+#colorbar-div {
+  position: absolute;
+  bottom: 30px;
+  right: 10px;
+  z-index: 1000;
+  background: rgba(6, 12, 18, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 7px 6px 6px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Alert (source warning) */
+.col-3 .alert-warning {
+  background: rgba(255,138,61,0.10) !important;
+  border: 1px solid rgba(255,138,61,0.3) !important;
+  color: var(--orange) !important;
+  font-size: calc(11px * var(--fs-scale)) !important;
+  border-radius: 2px !important;
+}
+
+/* ── Main panel (col-9) ──────────────────────────────────── */
+#main-panel-col, .col-9 {
+  background: var(--bg) !important;
+  padding: 0 !important;
+}
+
+/* ── Map wrapper ─────────────────────────────────────────── */
+#map-wrapper {
+  background: #07111c !important;
+}
+
+/* ── Resize divider ──────────────────────────────────────── */
+#resize-divider {
+  background: var(--bg-sidebar) !important;
+  border-top: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+#resize-divider:hover,
+#resize-divider.dragging {
+  background: var(--bg-panel) !important;
+  border-color: var(--cyan-mid) !important;
+}
+#resize-divider::after {
+  color: var(--text-lo) !important;
+  letter-spacing: 4px;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+#charts-wrapper .nav-tabs {
+  background: var(--bg-sidebar) !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 0 4px;
+  gap: 0;
+}
+#charts-wrapper .nav-tabs .nav-link {
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--text-lo) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  padding: 8px 14px !important;
+  margin-bottom: -1px;
+  border-radius: 0 !important;
+  transition: color 0.15s, border-color 0.15s;
+}
+#charts-wrapper .nav-tabs .nav-link:hover {
+  color: var(--text-mid) !important;
+}
+#charts-wrapper .nav-tabs .nav-link.active {
+  color: var(--cyan) !important;
+  border-bottom-color: var(--cyan) !important;
+  background: transparent !important;
+}
+
+/* ── Charts wrapper ──────────────────────────────────────── */
+#charts-wrapper {
+  background: var(--bg) !important;
+  margin-top: 0 !important;
+}
+#charts-wrapper .tab-content { background: var(--bg) !important; }
+
+/* ── Plotly graph backgrounds ────────────────────────────── */
+.js-plotly-plot .plotly .bg,
+.js-plotly-plot .plotly .main-svg { background: transparent !important; }
+.js-plotly-plot { background: transparent !important; }
+
+/* ── Toast (no-data warning) ─────────────────────────────── */
+.toast {
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(255,138,61,0.35) !important;
+  border-radius: 2px !important;
+  color: var(--orange) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(11px * var(--fs-scale)) !important;
+}
+.toast-header {
+  background: rgba(255,138,61,0.08) !important;
+  color: var(--orange) !important;
+  border-bottom-color: rgba(255,138,61,0.2) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+.toast .btn-close { filter: invert(1) !important; opacity: 0.4 !important; }
+
+/* ── Leaflet map elements ────────────────────────────────── */
+.leaflet-container { background: #07111c !important; }
+.leaflet-control-zoom a {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--cyan) !important;
+  font-size: calc(16px * var(--fs-scale)) !important;
+  line-height: 24px !important;
+}
+.leaflet-control-zoom a:hover { background: var(--bg-panel) !important; color: var(--text-hi) !important; }
+.leaflet-control-attribution {
+  background: rgba(6,12,18,0.7) !important;
+  color: var(--text-lo) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(8px * var(--fs-scale)) !important;
+  letter-spacing: 0.04em !important;
+}
+.leaflet-control-attribution a { color: var(--text-lo) !important; }
+
+/* Leaflet popup (pixel marker) */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+  color: var(--text-mid) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
+}
+.leaflet-popup-tip { background: var(--bg-card) !important; }
+
+/* Marker icon glow */
+.leaflet-marker-icon { filter: drop-shadow(0 0 6px rgba(255,138,61,0.7)); }
+
+/* ── Font-size control buttons ───────────────────────────── */
+.font-size-btn {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 2px !important;
+  color: var(--text-lo) !important;
+  font-family: var(--font-mono) !important;
+  font-size: calc(9px * var(--fs-scale)) !important;
+  padding: 1px 5px !important;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.font-size-btn:hover {
+  color: var(--cyan) !important;
+  border-color: var(--cyan-mid) !important;
+}
+.font-size-btn:disabled {
+  opacity: 0.25 !important;
+  cursor: default;
+}

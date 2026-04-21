@@ -6,6 +6,7 @@
   height: 100vh;
   overflow: hidden;
   padding: 0;
+  background: #060c12;
 }
 
 /* Map wrapper — height driven by CSS variable set by JS */
@@ -13,21 +14,26 @@
   flex: 0 0 var(--map-h, 50vh);
   min-height: 80px;
   overflow: hidden;
+  background: #07111c;
+  position: relative;
 }
 
 /* Drag handle bar */
 #resize-divider {
   flex: 0 0 6px;
-  background: #c8d0c8;
+  background: #07101a;
+  border-top: 1px solid rgba(91,227,255,0.13);
+  border-bottom: 1px solid rgba(91,227,255,0.13);
   cursor: row-resize;
   position: relative;
   z-index: 100;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 #resize-divider:hover,
 #resize-divider.dragging {
-  background: #7aaa7a;
+  background: #0a1520;
+  border-color: rgba(91,227,255,0.38);
 }
 
 /* Grip dots */
@@ -37,7 +43,7 @@
   top: -3px;
   left: 50%;
   transform: translateX(-50%);
-  color: #888;
+  color: rgba(91,227,255,0.25);
   font-size: 10px;
   letter-spacing: 3px;
   pointer-events: none;
@@ -51,21 +57,54 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  margin-top: 8px;
+  margin-top: 0;
+  background: #060c12;
+}
+
+/* dbc.Tabs renders a wrapper div as the direct child — make it a flex column
+   so that .nav-tabs and .tab-content can participate in the flex chain */
+#charts-wrapper > div {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 #charts-wrapper .nav-tabs    { flex: 0 0 auto; }
 #charts-wrapper .tab-content { flex: 1 1 0; overflow: hidden; }
 #charts-wrapper .tab-pane    { height: 100%; }
 
-/* dcc.Graph fills its container */
+/* All dcc.Graph elements fill their tab pane */
 #charts-wrapper .js-plotly-plot,
 #charts-wrapper .plotly {
   height: 100% !important;
 }
 
-/* Metric Trends: inner wrapper scrolls vertically (subplot grid is taller than pane) */
+/* Metric Trends: explicit height from CSS variable so overflow-y always fires.
+   --charts-h is the pixel height of the charts area (set by resize.js).
+   42px = Bootstrap nav-tabs bar height. */
 #metrics-annual-chart-wrapper {
-  height: 100%;
+  height: calc(var(--charts-h, 50vh) - 42px);
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91,227,255,0.3) transparent;
+}
+#metrics-annual-chart-wrapper::-webkit-scrollbar       { width: 6px; }
+#metrics-annual-chart-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(91,227,255,0.25);
+  border-radius: 3px;
+}
+#metrics-annual-chart-wrapper::-webkit-scrollbar-track {
+  background: rgba(6,12,18,0.6);
+}
+
+/* Explicit pixel height is set on this element by the render_metrics_annual
+   callback (fig.layout.height px), so Plotly fills it exactly and the
+   wrapper's overflow-y: auto scrolls the rest. */
+#metrics-annual-chart .js-plotly-plot,
+#metrics-annual-chart .plotly,
+#metrics-annual-chart .main-svg {
+  height: 100% !important;
 }

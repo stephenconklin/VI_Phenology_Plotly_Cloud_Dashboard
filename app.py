@@ -90,7 +90,7 @@ from modules.visualization import (
     get_shapefile_geojson_data,
     get_tile_layer_props,
     make_annual_cycle_figure,
-    make_colorbar_html,
+    make_colorbar_component,
     make_empty_timeseries_figure,
     make_metrics_annual_figure,
     make_metrics_table,
@@ -196,7 +196,10 @@ _FAST_METRIC_KEYS: frozenset[str] = frozenset(FAST_BASEMAP_METRICS.values())
 
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap",
+    ],
     suppress_callback_exceptions=True,
 )
 server = app.server   # Dash Enterprise / gunicorn WSGI entry point
@@ -207,11 +210,14 @@ server = app.server   # Dash Enterprise / gunicorn WSGI entry point
 # ---------------------------------------------------------------------------
 
 _SIDEBAR_STYLE = {
-    "background": "#f4f7f4",
-    "padding":    "12px",
-    "overflowY":  "auto",
-    "height":     "100vh",
-    "fontSize":   "0.9em",
+    "background":  "#07101a",
+    "borderRight": "1px solid rgba(91,227,255,0.13)",
+    "padding":     "18px 14px 16px",
+    "overflowY":   "auto",
+    "height":      "100vh",
+    "fontSize":    "0.9em",
+    "fontFamily":  "'Inter', sans-serif",
+    "color":       "rgba(255,255,255,0.92)",
 }
 
 _MAP_STYLE = {
@@ -234,7 +240,7 @@ def _initial_map_children() -> list:
             id="metric-overlay",
             url="",
             bounds=[[-90, -180], [90, 180]],
-            opacity=0.75,
+            opacity=0.75,  # updated by callback; matches slider default
         ),
         dl.Marker(
             id="pixel-marker",
@@ -271,13 +277,44 @@ _source_warning = (
          "Per-pixel metrics unavailable. ",
          f"Error: {source_error()}"],
         color="warning",
-        style={"fontSize": "0.82em", "padding": "6px", "marginTop": "6px"},
+        style={
+            "fontSize": "0.82em", "padding": "6px", "marginTop": "6px",
+            "background": "rgba(255,138,61,0.10)",
+            "border": "1px solid rgba(255,138,61,0.3)",
+            "color": "#ff8a3d",
+            "borderRadius": "2px",
+        },
     )
     if not source_available() else None
 )
 
 _sidebar_content = [
-    html.H5("BioSCape Phenology Explorer", style={"marginBottom": "2px"}),
+    # Product label + font-size controls (top-right)
+    html.Div([
+        html.Div("BioSCape · ESA / NASA", style={
+            "fontFamily": "'Space Mono', monospace",
+            "fontSize": "9px",
+            "letterSpacing": "0.12em",
+            "textTransform": "uppercase",
+            "color": "#5be3ff",
+        }),
+        html.Div([
+            html.Button("A-", id="font-size-dec", n_clicks=0, className="font-size-btn",
+                        title="Decrease font size"),
+            html.Button("A+", id="font-size-inc", n_clicks=0, className="font-size-btn",
+                        title="Increase font size"),
+        ], style={"display": "flex", "gap": "4px", "alignItems": "center"}),
+    ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "3px"}),
+    html.H5("Phenology Explorer", style={
+        "fontFamily": "'Space Mono', monospace",
+        "fontSize": "14px",
+        "fontWeight": "700",
+        "letterSpacing": "0.06em",
+        "textTransform": "uppercase",
+        "color": "rgba(255,255,255,0.92)",
+        "marginBottom": "2px",
+        "lineHeight": "1.2",
+    }),
     html.Div(
         [
             "Stephen Conklin · ",
@@ -285,27 +322,30 @@ _sidebar_content = [
                 "GitHub",
                 href="https://github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
                 target="_blank",
-                style={"color": "inherit"},
+                style={"color": "rgba(91,227,255,0.45)", "textDecoration": "none"},
             ),
         ],
-        style={"fontSize": "0.75em", "color": "#888", "marginBottom": "4px"},
+        style={"fontSize": "10px", "color": "rgba(255,255,255,0.28)", "marginBottom": "4px", "letterSpacing": "0.04em"},
     ),
-    html.Hr(style={"margin": "4px 0"}),
+    html.Hr(style={"margin": "8px 0", "borderColor": "rgba(91,227,255,0.13)"}),
 
     html.Label("Region", className="form-label fw-semibold"),
     dcc.Dropdown(id="region-dropdown", options=REGION_OPTIONS,
-                 value=DEFAULT_REGION, clearable=False,
-                 style={"marginBottom": "8px"}),
+                 value=DEFAULT_REGION, clearable=False, searchable=False,
+                 style={"marginBottom": "10px"},
+                 className="hud-dropdown"),
 
     html.Label("Basemap metric", className="form-label fw-semibold"),
     dcc.Dropdown(id="metric-select", options=BASEMAP_OPTIONS,
-                 value=_DEFAULT_BASEMAP_KEY, clearable=False,
-                 style={"marginBottom": "8px"}),
+                 value=_DEFAULT_BASEMAP_KEY, clearable=False, searchable=False,
+                 style={"marginBottom": "10px"},
+                 className="hud-dropdown"),
 
     html.Label("Basemap style", className="form-label fw-semibold"),
     dcc.Dropdown(id="basemap-style", options=TILE_OPTIONS,
-                 value="World_Imagery", clearable=False,
-                 style={"marginBottom": "8px"}),
+                 value="World_Imagery", clearable=False, searchable=False,
+                 style={"marginBottom": "10px"},
+                 className="hud-dropdown"),
 
     html.Label("Metric layer opacity", className="form-label fw-semibold"),
     dcc.Slider(id="opacity-slider", min=0.0, max=1.0, value=0.75, step=0.05,
@@ -322,27 +362,20 @@ _sidebar_content = [
             {"label": "Mean ± 2 SD  (~95 %)",   "value": "2sd"},
             {"label": "Mean ± 1 SD  (~68 %)",   "value": "1sd"},
         ],
-        value="3sd", clearable=False,
-        style={"marginBottom": "8px"},
+        value="3sd", clearable=False, searchable=False,
+        style={"marginBottom": "10px"},
+        className="hud-dropdown",
     ),
 
     html.Label("Year range", className="form-label fw-semibold"),
     dcc.RangeSlider(
         id="year-range",
         min=2000, max=2030, value=[2000, 2030], step=1,
-        marks={}, allowCross=False,
-        tooltip={"placement": "bottom", "always_visible": False},
-    ),
-    dcc.Checklist(
-        id="single-year-toggle",
-        options=[{"label": " Single year", "value": "single"}],
-        value=[],
-        style={"marginBottom": "4px", "fontSize": "0.85rem"},
+        marks={}, allowCross=True, pushable=0,
+        tooltip={"placement": "bottom", "always_visible": True},
     ),
 
-    html.Div(id="colorbar-div", style={"marginTop": "8px", "marginBottom": "4px"}),
-
-    html.Hr(style={"margin": "8px 0"}),
+    html.Hr(style={"margin": "8px 0", "borderColor": "rgba(91,227,255,0.13)"}),
 
     html.Label("Whittaker λ (smoothing)", className="form-label fw-semibold"),
     dcc.Slider(
@@ -364,11 +397,11 @@ _sidebar_content = [
         ),
     ]) if _SHAPEFILE_OPTIONS else html.Div(id="shapefile-visible")),
 
-    html.Hr(style={"margin": "8px 0"}),
+    html.Hr(style={"margin": "8px 0", "borderColor": "rgba(91,227,255,0.13)"}),
 
     html.Div(id="pixel-info"),
 
-    html.Hr(style={"margin": "8px 0"}),
+    html.Hr(style={"margin": "8px 0", "borderColor": "rgba(91,227,255,0.13)"}),
 
     html.H6("Pixel Phenology Metrics", style={"marginBottom": "2px"}),
     html.Div(id="metrics-table"),
@@ -381,6 +414,7 @@ _sidebar_content = [
     dcc.Store(id="selected-pixel"),
     dcc.Store(id="pixel-result"),
     dcc.Store(id="shapefile-region-locked"),   # region ID locked after shapefile click
+    dcc.Store(id="font-scale-store", data=1.0),
 ]
 
 _sidebar = dbc.Col(_sidebar_content, width=3, style=_SIDEBAR_STYLE)
@@ -388,14 +422,18 @@ _sidebar = dbc.Col(_sidebar_content, width=3, style=_SIDEBAR_STYLE)
 _main_panel = dbc.Col(
     [
         html.Div(
-            dl.Map(
-                id="main-map",
-                center=_INITIAL_CENTER,
-                zoom=_INITIAL_ZOOM,
-                style=_MAP_STYLE,
-                children=_initial_map_children(),
-            ),
+            [
+                dl.Map(
+                    id="main-map",
+                    center=_INITIAL_CENTER,
+                    zoom=_INITIAL_ZOOM,
+                    style=_MAP_STYLE,
+                    children=_initial_map_children(),
+                ),
+                html.Div(id="colorbar-div"),
+            ],
             id="map-wrapper",
+            style={"position": "relative"},
         ),
         html.Div(id="resize-divider"),
         html.Div(
@@ -419,8 +457,7 @@ _main_panel = dbc.Col(
                         html.Div(
                             dcc.Graph(id="metrics-annual-chart",
                                       figure=make_empty_timeseries_figure(),
-                                      style={"height": "100%"},
-                                      config={"responsive": True}),
+                                      config={"responsive": False}),
                             id="metrics-annual-chart-wrapper",
                         ),
                         label="Metric Trends",
@@ -469,11 +506,15 @@ else:
                 style={
                     "position": "fixed", "top": 10, "right": 10,
                     "width": 320, "zIndex": 9999,
+                    "background": "#0d1c2e",
+                    "border": "1px solid rgba(255,138,61,0.35)",
+                    "color": "#ff8a3d",
+                    "borderRadius": "2px",
                 },
             ),
         ],
         fluid=True,
-        style={"padding": 0, "overflow": "hidden"},
+        style={"padding": 0, "overflow": "hidden", "background": "#060c12"},
     )
 
 
@@ -566,6 +607,44 @@ def _restore_annual_nan(d: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Clientside callback: font-size scale
+# ---------------------------------------------------------------------------
+_FONT_SCALES = [0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5]
+
+app.clientside_callback(
+    """
+    function(n_dec, n_inc, current_scale) {
+        const scales = [0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5];
+        let idx = scales.indexOf(current_scale);
+        if (idx === -1) idx = 2;
+        const trig = dash_clientside.callback_context.triggered;
+        if (trig && trig.length > 0) {
+            const prop = trig[0].prop_id;
+            if (prop.includes('font-size-dec')) idx = Math.max(0, idx - 1);
+            if (prop.includes('font-size-inc')) idx = Math.min(scales.length - 1, idx + 1);
+        }
+        const newScale = scales[idx];
+        document.documentElement.style.setProperty('--fs-scale', newScale);
+        return newScale;
+    }
+    """,
+    Output("font-scale-store", "data"),
+    Input("font-size-dec", "n_clicks"),
+    Input("font-size-inc", "n_clicks"),
+    State("font-scale-store", "data"),
+    prevent_initial_call=True,
+)
+
+# Relay drag_value → value so the server callback fires even when Plotly
+# fails to emit a value change when both handles land on the same integer.
+app.clientside_callback(
+    "function(v) { return v || window.dash_clientside.no_update; }",
+    Output("year-range", "value", allow_duplicate=True),
+    Input("year-range", "drag_value"),
+    prevent_initial_call=True,
+)
+
+# ---------------------------------------------------------------------------
 # Callbacks: region / dataset
 # ---------------------------------------------------------------------------
 
@@ -598,16 +677,6 @@ def update_year_slider(dataset_info: dict):
     return yr_min, yr_max, [yr_min, yr_max]
 
 
-@callback(
-    Output("year-range", "value", allow_duplicate=True),
-    Input("single-year-toggle", "value"),
-    State("year-range", "value"),
-    prevent_initial_call=True,
-)
-def snap_single_year(toggle, year_range):
-    if toggle and year_range:
-        return [year_range[0], year_range[0]]
-    raise PreventUpdate
 
 
 # ---------------------------------------------------------------------------
@@ -617,6 +686,7 @@ def snap_single_year(toggle, year_range):
 @callback(
     Output("metric-overlay", "url"),
     Output("metric-overlay", "bounds"),
+    Output("metric-overlay", "opacity"),
     Output("tile-layer", "url"),
     Output("tile-layer", "attribution"),
     Output("tile-layer", "maxZoom"),
@@ -673,7 +743,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
 
     # --- Overlay PNG ---
     overlay_url, bounds = get_overlay_url_and_bounds(
-        z, lat, lon, metric, float(opacity or 0.75), zmin, zmax
+        z, lat, lon, metric, float(opacity if opacity is not None else 0.75), zmin, zmax
     )
 
     # --- Tile layer ---
@@ -686,11 +756,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
     valid  = z[~np.isnan(z)]
     cb_min = float(valid.min()) if zmin is None else zmin
     cb_max = float(valid.max()) if zmax is None else zmax
-    colorbar = (
-        dcc.Markdown(make_colorbar_html(metric, cb_min, cb_max),
-                     dangerously_allow_html=True)
-        if len(valid) > 0 else html.Div()
-    )
+    colorbar = make_colorbar_component(metric, cb_min, cb_max) if len(valid) > 0 else None
 
     # --- Store ---
     basemap_info = {
@@ -719,6 +785,7 @@ def update_basemap(region, metric, basemap_style, opacity, colorscale_range):
     return (
         overlay_url,
         bounds,
+        float(opacity if opacity is not None else 0.75),
         tile_props["url"],
         tile_props["attribution"],
         tile_props["maxZoom"],
@@ -782,13 +849,12 @@ def update_selected_pixel(clickData, region, basemap_info):
     Output("pixel-result", "data"),
     Input("selected-pixel", "data"),
     Input("year-range", "value"),
-    Input("single-year-toggle", "value"),
     Input("basemap-info", "data"),
     Input("lambda-slider", "value"),
     State("region-dropdown", "value"),
 )
 def compute_pixel_result(
-    selected_pixel, year_range, single_year_toggle,
+    selected_pixel, year_range,
     basemap_info, lambda_val, region,
 ):
     if selected_pixel is None or selected_pixel.get("region") != region:
@@ -828,7 +894,7 @@ def compute_pixel_result(
 
     _yr = year_range or [2000, 2030]
     yr_lo = int(_yr[0])
-    yr_hi = int(_yr[0]) if single_year_toggle else int(_yr[1])
+    yr_hi = int(_yr[1])
     obs_years = ts.dates.astype("datetime64[Y]").astype(int) + 1970
     year_keep = (obs_years >= yr_lo) & (obs_years <= yr_hi)
     mask &= year_keep
@@ -933,22 +999,25 @@ def render_annual_cycle(pixel_result, basemap_info):
 
 @callback(
     Output("metrics-annual-chart", "figure"),
+    Output("metrics-annual-chart", "style"),
     Input("pixel-result", "data"),
 )
 def render_metrics_annual(pixel_result):
+    _empty_style = {"height": "100%"}
     if pixel_result is None:
-        return make_empty_timeseries_figure()
+        return make_empty_timeseries_figure(), _empty_style
 
     valid_years = pixel_result.get("valid_years", [])
     if not valid_years:
-        return make_empty_timeseries_figure()
+        return make_empty_timeseries_figure(), _empty_style
 
-    return make_metrics_annual_figure(
+    fig = make_metrics_annual_figure(
         valid_years = valid_years,
         annual_data = _restore_annual_nan(pixel_result["annual_data"]),
         metrics     = _restore_nan(pixel_result["metrics"]),
         region_id   = pixel_result["region_id"],
     )
+    return fig, {"height": f"{fig.layout.height}px"}
 
 
 @callback(
@@ -992,7 +1061,7 @@ def update_pixel_info(selected_pixel, pixel_result):
     if selected_pixel is None:
         return html.P(
             "No pixel selected. Click on the map.",
-            style={"color": "#999", "fontSize": "0.82em", "fontStyle": "italic"},
+            style={"color": "rgba(255,255,255,0.28)", "fontSize": "0.82em", "fontStyle": "italic", "fontFamily": "'Space Mono', monospace", "letterSpacing": "0.06em"},
         )
 
     lon = selected_pixel["lon"]
@@ -1000,17 +1069,21 @@ def update_pixel_info(selected_pixel, pixel_result):
     yi  = selected_pixel["yi"]
     xi  = selected_pixel["xi"]
 
+    _row = lambda lbl, val: html.Div([
+        html.Span(lbl + " ", style={"color": "rgba(255,255,255,0.35)"}),
+        html.Span(val,        style={"color": "#5be3ff"}),
+    ], style={"fontFamily": "'Space Mono', monospace", "fontSize": "10px", "marginBottom": "2px"})
+
     if pixel_result is None:
         return html.Div([
-            html.B("Selected pixel"), html.Br(),
-            html.Small([
-                f"Lat {lat:.4f}°, Lon {lon:.4f}°", html.Br(),
-                f"Array index: y={yi}, x={xi}",
-            ], style={"color": "#444"}),
-            html.Br(),
-            html.Small("Computing…",
-                       style={"color": "#999", "fontStyle": "italic"}),
-        ])
+            html.Div("Selected Pixel", style={"fontFamily": "'Space Mono', monospace", "fontSize": "9px", "letterSpacing": "0.13em", "textTransform": "uppercase", "color": "rgba(255,255,255,0.45)", "marginBottom": "5px"}),
+            _row("LAT", f"{lat:.4f}°"),
+            _row("LON", f"{lon:.4f}°"),
+            html.Div("Computing…",
+                     style={"color": "rgba(255,255,255,0.28)", "fontStyle": "italic", "fontSize": "10px", "fontFamily": "'Space Mono', monospace", "marginTop": "4px"}),
+        ], style={"background": "#0d1c2e", "border": "1px solid rgba(91,227,255,0.13)", "borderRadius": "2px", "padding": "8px 10px"})
+
+    # pixel_result is available — fall through to render full info below
 
     n_total    = pixel_result["ts_n_total"]
     n_valid    = pixel_result["ts_n_valid"]
@@ -1032,21 +1105,22 @@ def update_pixel_info(selected_pixel, pixel_result):
         if n_in_range != n_valid else []
     )
 
+    _row = lambda lbl, val: html.Div([
+        html.Span(lbl + " ", style={"color": "rgba(255,255,255,0.35)"}),
+        html.Span(val,        style={"color": "#5be3ff"}),
+    ], style={"fontFamily": "'Space Mono', monospace", "fontSize": "10px", "marginBottom": "2px"})
+
+    extra = [_row("IN RANGE", f"{n_in_range} / {n_valid}")] if n_in_range != n_valid else []
+
     return html.Div([
-        html.B("Selected pixel"), html.Br(),
-        html.Small([
-            f"Lat {lat:.4f}°, Lon {lon:.4f}°", html.Br(),
-            f"Array index: y={yi}, x={xi}",
-        ], style={"color": "#444"}),
-        html.Br(),
-        html.Small([
-            html.B("Valid obs: "), f"{n_valid} / {n_total}  ({pct_valid:.1f}%)", html.Br(),
-            *range_line,
-            html.B("Date range: "), f"{date_first} → {date_last}", html.Br(),
-            html.B(f"{pixel_result['vi_var']} range: "),
-            f"{vi_lo:.3f} – {vi_hi:.3f}",
-        ], style={"color": "#444"}),
-    ])
+        html.Div("Selected Pixel", style={"fontFamily": "'Space Mono', monospace", "fontSize": "9px", "letterSpacing": "0.13em", "textTransform": "uppercase", "color": "rgba(255,255,255,0.45)", "marginBottom": "5px"}),
+        _row("LAT",      f"{lat:.4f}°"),
+        _row("LON",      f"{lon:.4f}°"),
+        _row("VALID OBS", f"{n_valid} / {n_total}  ({pct_valid:.1f}%)"),
+        *extra,
+        _row("DATE RANGE", f"{date_first} → {date_last}"),
+        _row(pixel_result['vi_var'] + " RANGE", f"{vi_lo:.3f} – {vi_hi:.3f}"),
+    ], style={"background": "#0d1c2e", "border": "1px solid rgba(91,227,255,0.13)", "borderRadius": "2px", "padding": "8px 10px"})
 
 
 @callback(
@@ -1059,7 +1133,7 @@ def update_metrics_table(pixel_result, basemap_info, metric_key):
     if pixel_result is None:
         return html.P(
             "Select a pixel to compute metrics.",
-            style={"color": "#999", "fontSize": "0.82em", "fontStyle": "italic"},
+            style={"color": "rgba(255,255,255,0.28)", "fontSize": "0.82em", "fontStyle": "italic", "fontFamily": "'Space Mono', monospace", "letterSpacing": "0.06em"},
         )
 
     metrics    = _restore_nan(pixel_result["metrics"])
