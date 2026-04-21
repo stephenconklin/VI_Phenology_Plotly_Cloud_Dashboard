@@ -332,10 +332,10 @@ _sidebar_content = [
                 "GitHub",
                 href="https://github.com/stephenconklin/VI_Phenology_Plotly_Cloud_Dashboard",
                 target="_blank",
-                style={"color": "rgba(91,227,255,0.45)", "textDecoration": "none"},
+                style={"color": "#5be3ff", "textDecoration": "none"},
             ),
         ],
-        style={"fontSize": "10px", "color": "rgba(255,255,255,0.28)", "marginBottom": "4px", "letterSpacing": "0.04em"},
+        style={"fontSize": "10px", "color": "rgba(255,255,255,0.90)", "marginBottom": "4px", "letterSpacing": "0.04em"},
     ),
     html.Hr(style={"margin": "8px 0", "borderColor": "rgba(91,227,255,0.13)"}),
 

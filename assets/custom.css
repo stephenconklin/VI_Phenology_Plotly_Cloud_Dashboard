@@ -88,11 +88,11 @@ body::after   { bottom: 8px; right: 8px;   border-bottom: 1.5px solid var(--cyan
 
 /* Author line */
 .col-3 > div:nth-child(2) {
-  color: var(--text-lo) !important;
+  color: var(--text-mid) !important;
   font-size: calc(10px * var(--fs-scale)) !important;
   letter-spacing: 0.04em;
 }
-.col-3 a { color: var(--cyan-mid) !important; text-decoration: none !important; }
+.col-3 a { color: var(--cyan) !important; text-decoration: none !important; }
 .col-3 a:hover { color: var(--cyan) !important; }
 
 /* ── HR dividers ─────────────────────────────────────────── */
