@@ -3,8 +3,6 @@
 An interactive web dashboard for exploring vegetation index (VI) phenology across BioSCape LVIS flight box regions. Built on Plotly Dash and Dash-Leaflet, and deployable to Plotly Cloud or any Gunicorn-compatible host.
 
 [![BioSCape Phenology Explorer](docs/images/BioSCape-Phenology-Explorer-Dashboard.png)](docs/images/BioSCape-Phenology-Explorer-Dashboard.png)
-![Dashboard](docs/images/BioSCape-Phenology-Explorer-Dashboard.png?raw=true&v=2)
-
 
 ---
 
