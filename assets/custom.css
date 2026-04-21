@@ -18,8 +18,8 @@
   --cyan-mid:   rgba(91, 227, 255, 0.32);
   --orange:     #ff8a3d;
   --text-hi:    rgba(255, 255, 255, 0.92);
-  --text-mid:   rgba(255, 255, 255, 0.55);
-  --text-lo:    rgba(255, 255, 255, 0.28);
+  --text-mid:   rgba(255, 255, 255, 0.90);
+  --text-lo:    rgba(255, 255, 255, 0.70);
   --border:     rgba(91, 227, 255, 0.13);
   --border-hi:  rgba(91, 227, 255, 0.38);
   --font-mono:  'Space Mono', monospace;
@@ -349,7 +349,7 @@ input.slider-tooltip,
   border-top: none !important;
   color: rgba(255, 255, 255, 0.6) !important;
   font-family: 'Space Mono', monospace !important;
-  font-size: 9px !important;
+  font-size: calc(10px * var(--fs-scale)) !important;
   line-height: 1.4 !important;
   padding: 1px 4px !important;
   backdrop-filter: blur(4px);

@@ -161,3 +161,5 @@ NONNEGATIVE_METRICS: frozenset[str] = frozenset({...})
 | No scrollbar in Metric Trends tab | `dbc.Tabs` wrapper div not a flex container; `.tab-pane height: 100%` resolves to `auto` | Add `#charts-wrapper > div { flex: 1 1 0; display: flex; flex-direction: column; }` to `resize.css` |
 | Mean line in Metric Trends black/invisible | Hard-coded `color="#000000"` on dark background | Changed to `rgba(91,227,255,0.75)` (theme cyan); std fill to `rgba(91,227,255,0.10)` |
 | Phenology Scatter uses continuous colorscale for Year | Single trace with `colorscale="Plasma"` | One trace per year using `_year_color()` palette; discrete legend entries |
+| SVG elements (`html.Svg`, `html.Polygon`, etc.) raise `AttributeError` | `dash.html` does not expose SVG element classes | Encode SVG as base64 data URI; render with `html.Img(src="data:image/svg+xml;base64,...")` |
+| `dangerouslySetInnerHTML` raises `TypeError` on `html.Div` | Removed in Dash 4; not an allowed prop | Same fix: base64 SVG data URI in `html.Img` |

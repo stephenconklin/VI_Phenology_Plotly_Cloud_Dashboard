@@ -267,17 +267,17 @@ def make_colorbar_component(
     mono = "'Space Mono', monospace"
     return _html.Div([
         _html.Div(label, style={
-            "fontFamily": mono, "fontSize": "9px",
+            "fontFamily": mono, "fontSize": "calc(10px * var(--fs-scale))",
             "color": "rgba(255,255,255,0.6)", "letterSpacing": "0.04em",
             "textAlign": "center", "marginBottom": "2px", "lineHeight": "1.3",
         }),
         _html.Div(units, style={
-            "fontFamily": mono, "fontSize": "7px",
+            "fontFamily": mono, "fontSize": "calc(8px * var(--fs-scale))",
             "color": "rgba(255,255,255,0.35)", "textAlign": "center",
             "marginBottom": "5px",
         }) if units else None,
         _html.Div(f"{zmax:.4g}", style={
-            "fontFamily": mono, "fontSize": "8px",
+            "fontFamily": mono, "fontSize": "calc(9px * var(--fs-scale))",
             "color": "rgba(91,227,255,0.7)", "textAlign": "center", "marginBottom": "2px",
         }),
         _html.Img(
@@ -285,7 +285,7 @@ def make_colorbar_component(
             style={"width": "34px", "height": "auto", "display": "block", "margin": "0 auto"},
         ),
         _html.Div(f"{zmin:.4g}", style={
-            "fontFamily": mono, "fontSize": "8px",
+            "fontFamily": mono, "fontSize": "calc(9px * var(--fs-scale))",
             "color": "rgba(91,227,255,0.7)", "textAlign": "center", "marginTop": "2px",
         }),
     ])
@@ -373,7 +373,7 @@ def make_timeseries_figure(
             uirevision=f"timeseries-{zmin}-{zmax}",
             plot_bgcolor="#060c12",
             paper_bgcolor="#060c12",
-            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.90)"),
         ),
     )
     return fig
@@ -385,21 +385,21 @@ def make_empty_timeseries_figure() -> go.Figure:
         layout=go.Layout(
             title=dict(
                 text="Click a pixel on the map to view its time series",
-                font=dict(size=13, color="rgba(255,255,255,0.28)", family="'Space Mono', monospace"),
+                font=dict(size=13, color="rgba(255,255,255,0.70)", family="'Space Mono', monospace"),
             ),
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
             autosize=True,
             plot_bgcolor="#060c12",
             paper_bgcolor="#060c12",
-            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.45)"),
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.85)"),
             annotations=[
                 dict(
-                    text="← Select a pixel",
+                    text="↑ Select a pixel",
                     x=0.5, y=0.5,
                     xref="paper", yref="paper",
                     showarrow=False,
-                    font=dict(size=16, color="rgba(255,255,255,0.2)", family="'Space Mono', monospace"),
+                    font=dict(size=16, color="rgba(255,255,255,0.65)", family="'Space Mono', monospace"),
                 )
             ],
         )
@@ -545,7 +545,7 @@ def make_annual_cycle_figure(
             uirevision=f"annual_cycle-{zmin}-{zmax}",
             plot_bgcolor="#060c12",
             paper_bgcolor="#060c12",
-            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.90)"),
         ),
     )
 
@@ -627,7 +627,7 @@ def make_phenology_scatter_figure(
             uirevision=f"phenology_scatter-{zmin}-{zmax}",
             plot_bgcolor="#060c12",
             paper_bgcolor="#060c12",
-            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
+            font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.90)"),
         ),
     )
 
@@ -728,11 +728,11 @@ def make_metrics_annual_figure(
         height=n_rows * 260 + 120,
         autosize=False,   # fixed subplot grid height — wrapper scrolls vertically
         legend=dict(orientation="h", yanchor="top", y=-0.03, x=0,
-                    font=dict(size=10, color="rgba(255,255,255,0.55)", family="'Space Mono', monospace"), traceorder="normal",
+                    font=dict(size=10, color="rgba(255,255,255,0.90)", family="'Space Mono', monospace"), traceorder="normal",
                     bgcolor="rgba(6,12,18,0.7)", bordercolor="rgba(91,227,255,0.15)", borderwidth=1),
         plot_bgcolor="#060c12",
         paper_bgcolor="#060c12",
-        font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.55)"),
+        font=dict(family="'Space Mono', monospace", color="rgba(255,255,255,0.90)"),
         margin=dict(l=65, r=25, t=60, b=90),
         uirevision="metrics_annual",
     )

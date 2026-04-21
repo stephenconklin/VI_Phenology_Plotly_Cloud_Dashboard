@@ -1,15 +1,79 @@
-/* Drag-to-resize divider between map and charts panel.
-   Pure DOM — no Dash callbacks involved. */
+/* Drag-to-resize dividers — pure DOM, no Dash callbacks involved.
+   1. #sidebar-resize  — horizontal, adjusts sidebar width
+   2. #resize-divider  — vertical, adjusts map / charts split             */
 
 (function () {
   "use strict";
 
   function init() {
-    var divider   = document.getElementById("resize-divider");
+    var divider    = document.getElementById("resize-divider");
     var mapWrapper = document.getElementById("map-wrapper");
     var mainPanel  = document.getElementById("main-panel-col");
+    var sideHandle = document.getElementById("sidebar-resize");
+    var sidebarCol = document.getElementById("sidebar-col");
 
     if (!divider || !mapWrapper || !mainPanel) return false;
+
+    // ── Sidebar horizontal resize ───────────────────────────────────────────
+
+    if (sideHandle && sidebarCol) {
+      var hDragging  = false;
+      var hStartX    = 0;
+      var hStartW    = 0;
+
+      sideHandle.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        hDragging = true;
+        hStartX   = e.clientX;
+        hStartW   = sidebarCol.getBoundingClientRect().width;
+        sideHandle.classList.add("dragging");
+        document.body.style.cursor     = "col-resize";
+        document.body.style.userSelect = "none";
+      });
+
+      document.addEventListener("mousemove", function (e) {
+        if (!hDragging) return;
+        var delta = e.clientX - hStartX;
+        var minW  = 160;
+        var maxW  = Math.round(window.innerWidth * 0.55);
+        var newW  = Math.min(Math.max(hStartW + delta, minW), maxW);
+        document.documentElement.style.setProperty("--sidebar-w", newW + "px");
+      });
+
+      document.addEventListener("mouseup", function () {
+        if (!hDragging) return;
+        hDragging = false;
+        sideHandle.classList.remove("dragging");
+        document.body.style.cursor     = "";
+        document.body.style.userSelect = "";
+        setTimeout(fireResize, 50);
+      });
+
+      sideHandle.addEventListener("touchstart", function (e) {
+        var t     = e.touches[0];
+        hDragging = true;
+        hStartX   = t.clientX;
+        hStartW   = sidebarCol.getBoundingClientRect().width;
+        sideHandle.classList.add("dragging");
+      }, { passive: true });
+
+      document.addEventListener("touchmove", function (e) {
+        if (!hDragging) return;
+        var t    = e.touches[0];
+        var delta = t.clientX - hStartX;
+        var minW  = 160;
+        var maxW  = Math.round(window.innerWidth * 0.55);
+        var newW  = Math.min(Math.max(hStartW + delta, minW), maxW);
+        document.documentElement.style.setProperty("--sidebar-w", newW + "px");
+      }, { passive: true });
+
+      document.addEventListener("touchend", function () {
+        if (!hDragging) return;
+        hDragging = false;
+        sideHandle.classList.remove("dragging");
+        setTimeout(fireResize, 50);
+      });
+    }
 
     var dragging  = false;
     var startY    = 0;

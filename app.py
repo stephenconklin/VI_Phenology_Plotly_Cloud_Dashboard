@@ -221,7 +221,6 @@ server = app.server   # Dash Enterprise / gunicorn WSGI entry point
 
 _SIDEBAR_STYLE = {
     "background":  "#07101a",
-    "borderRight": "1px solid rgba(91,227,255,0.13)",
     "padding":     "18px 14px 16px",
     "overflowY":   "auto",
     "height":      "100vh",
@@ -428,7 +427,7 @@ _sidebar_content = [
     dcc.Store(id="font-scale-store", data=1.0),
 ]
 
-_sidebar = dbc.Col(_sidebar_content, width=3, style=_SIDEBAR_STYLE)
+_sidebar = dbc.Col(_sidebar_content, width=3, id="sidebar-col", style=_SIDEBAR_STYLE)
 
 _main_panel = dbc.Col(
     [
@@ -511,7 +510,7 @@ if _STARTUP_ERROR:
 else:
     app.layout = dbc.Container(
         [
-            dbc.Row([_sidebar, _main_panel], className="g-0", style={"height": "100vh"}),
+            dbc.Row([_sidebar, html.Div(id="sidebar-resize"), _main_panel], className="g-0", style={"height": "100vh"}),
             dbc.Toast(
                 id="no-data-toast",
                 header="No data available",

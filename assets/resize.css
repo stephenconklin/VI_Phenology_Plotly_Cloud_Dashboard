@@ -1,6 +1,55 @@
-/* Drag-to-resize layout for the main panel column */
+/* ── Sidebar horizontal resize ───────────────────────────────────────────── */
 
+/* Override Bootstrap col-3 fixed width with a draggable CSS variable */
+#sidebar-col {
+  flex: 0 0 var(--sidebar-w, 300px) !important;
+  max-width: var(--sidebar-w, 300px) !important;
+  width: var(--sidebar-w, 300px) !important;
+  border-right: none !important;
+  min-width: 160px;
+}
+
+/* Vertical drag handle between sidebar and main panel */
+#sidebar-resize {
+  flex: 0 0 6px;
+  background: #07101a;
+  border-left:  1px solid rgba(91,227,255,0.13);
+  border-right: 1px solid rgba(91,227,255,0.13);
+  cursor: col-resize;
+  height: 100vh;
+  position: relative;
+  z-index: 100;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#sidebar-resize:hover,
+#sidebar-resize.dragging {
+  background: #0a1520;
+  border-color: rgba(91,227,255,0.38);
+}
+
+/* Vertical grip dots */
+#sidebar-resize::after {
+  content: "·\A·\A·\A·\A·";
+  white-space: pre;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(91,227,255,0.25);
+  font-size: 10px;
+  line-height: 7px;
+  pointer-events: none;
+  letter-spacing: 0;
+}
+
+/* ── Map / charts vertical resize ────────────────────────────────────────── */
+
+/* Takes all remaining width after sidebar; flex-column for the vertical split */
 #main-panel-col {
+  flex: 1 1 0 !important;
+  max-width: none !important;
+  min-width: 0 !important;
   display: flex;
   flex-direction: column;
   height: 100vh;
